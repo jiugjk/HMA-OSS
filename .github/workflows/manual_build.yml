@@ -63,8 +63,8 @@ jobs:
             echo "keyAlias=$KEY_ALIAS"
             echo "keyPassword=$KEY_PASSWORD"
             echo "fileDir=$(pwd)/key.jks"
-            [ -n "$CROWDIN_PROJECT_ID" ] && echo "crowdinProjectId=$CROWDIN_PROJECT_ID"
-            [ -n "$CROWDIN_API_KEY" ] && echo "crowdinApiKey=$CROWDIN_API_KEY"
+            if [ -n "$CROWDIN_PROJECT_ID" ]; then echo "crowdinProjectId=$CROWDIN_PROJECT_ID"; fi
+            if [ -n "$CROWDIN_API_KEY" ]; then echo "crowdinApiKey=$CROWDIN_API_KEY"; fi
           } >> local.properties
 
       - name: Prepare debug env
