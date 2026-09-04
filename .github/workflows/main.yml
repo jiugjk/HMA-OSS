@@ -2,7 +2,7 @@ name: Main
 
 on:
   push:
-    branches: [ master ]
+    branches: [ future ]
     paths-ignore:
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/workflows/issue.yml'
@@ -42,7 +42,7 @@ jobs:
           java-version: '21'
 
       - name: Write key
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/future'
         run: |
           echo officialBuild=true >> local.properties
           echo storePassword='${{ secrets.KEY_STORE_PASSWORD }}' >> local.properties
@@ -119,7 +119,7 @@ jobs:
           tag_name: oss-${{ steps.buildModule.outputs.ossNum }}
 
       - name: Post to channel
-        if: ${{ github.event_name != 'pull_request' && success() && github.ref == 'refs/heads/master' }}
+        if: ${{ github.event_name != 'pull_request' && success() && github.ref == 'refs/heads/future' }}
         env:
           CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL }}
           BOT_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}

@@ -1,0 +1,122 @@
+name: Manual Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to build
+        required: true
+        default: future
+        type: string
+      build_type:
+        description: Build variant
+        required: true
+        default: BOTH
+        type: choice
+        options:
+          - RELEASE
+          - DEBUG
+          - BOTH
+
+jobs:
+  build:
+    name: Build ${{ inputs.build_type }} from ${{ inputs.branch }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Gradle wrapper validation
+        uses: gradle/wrapper-validation-action@v3
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Write release key
+        if: inputs.build_type == 'RELEASE' || inputs.build_type == 'BOTH'
+        run: |
+          echo officialBuild=true >> local.properties
+          echo storePassword='${{ secrets.KEY_STORE_PASSWORD }}' >> local.properties
+          echo keyAlias='${{ secrets.ALIAS }}' >> local.properties
+          echo keyPassword='${{ secrets.ALIAS_KEY_PASSWORD }}' >> local.properties
+          echo fileDir=`pwd`/key.jks >> local.properties
+          echo crowdinProjectId='${{ secrets.CROWDIN_PROJECT_ID }}' >> local.properties
+          echo crowdinApiKey='${{ secrets.CROWDIN_LIST_MEMBERS_API_TOKEN }}' >> local.properties
+          echo "${{ secrets.KEY_STORE }}" | base64 --decode > key.jks
+
+      - name: Prepare debug env
+        if: inputs.build_type == 'DEBUG'
+        run: |
+          touch local.properties
+          mkdir -p ~/.config/.android
+          ln -sfn ~/.config/.android ~/.android
+          if [ ! -f ~/.config/.android/debug.keystore ]; then
+            keytool -genkey -v -keystore ~/.config/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      - name: Cache gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Gradle prebuild
+        run: |
+          echo 'org.gradle.jvmargs=-Xmx2048m' >> gradle.properties
+          ./gradlew prebuild
+
+      - name: Build RELEASE
+        if: inputs.build_type == 'RELEASE' || inputs.build_type == 'BOTH'
+        id: buildRelease
+        run: |
+          ./gradlew :app:assembleRelease :zygote:assembleRelease
+          echo "releaseName=$(ls zygote/build/outputs/magisk/release/*.zip | awk -F '(/|.zip)' '{print $6}')" >> "$GITHUB_OUTPUT"
+          echo "releaseFile=$(ls zygote/build/outputs/magisk/release/*.zip)" >> "$GITHUB_OUTPUT"
+
+      - name: Build DEBUG
+        if: inputs.build_type == 'DEBUG' || inputs.build_type == 'BOTH'
+        id: buildDebug
+        run: |
+          ./gradlew :app:assembleDebug :zygote:assembleDebug
+          echo "debugName=$(ls zygote/build/outputs/magisk/debug/*.zip | awk -F '(/|.zip)' '{print $6}')" >> "$GITHUB_OUTPUT"
+          echo "debugFile=$(ls zygote/build/outputs/magisk/debug/*.zip)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload RELEASE
+        if: success() && (inputs.build_type == 'RELEASE' || inputs.build_type == 'BOTH')
+        uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          name: ${{ steps.buildRelease.outputs.releaseName }}
+          path: ${{ steps.buildRelease.outputs.releaseFile }}
+
+      - name: Upload DEBUG
+        if: success() && (inputs.build_type == 'DEBUG' || inputs.build_type == 'BOTH')
+        uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          name: ${{ steps.buildDebug.outputs.debugName }}
+          path: ${{ steps.buildDebug.outputs.debugFile }}
+
+      - name: Upload RELEASE mappings
+        if: success() && (inputs.build_type == 'RELEASE' || inputs.build_type == 'BOTH')
+        uses: actions/upload-artifact@v7
+        with:
+          name: mappings-release
+          path: |
+            app/build/outputs/mapping/release
+            zygote/build/outputs/mapping/release
+          if-no-files-found: ignore
