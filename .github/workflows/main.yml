@@ -41,17 +41,29 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Write key
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/future'
+      - name: Write signing key from secrets
+        env:
+          KEY_STORE_B64: ${{ secrets.KEY_STORE }}
+          STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ALIAS_KEY_PASSWORD }}
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+          CROWDIN_API_KEY: ${{ secrets.CROWDIN_LIST_MEMBERS_API_TOKEN }}
         run: |
-          echo officialBuild=true >> local.properties
-          echo storePassword='${{ secrets.KEY_STORE_PASSWORD }}' >> local.properties
-          echo keyAlias='${{ secrets.ALIAS }}' >> local.properties
-          echo keyPassword='${{ secrets.ALIAS_KEY_PASSWORD }}' >> local.properties
-          echo fileDir=`pwd`/key.jks >> local.properties
-          echo crowdinProjectId='${{ secrets.CROWDIN_PROJECT_ID }}' >> local.properties
-          echo crowdinApiKey='${{ secrets.CROWDIN_LIST_MEMBERS_API_TOKEN }}' >> local.properties
-          echo "${{ secrets.KEY_STORE }}" | base64 --decode > key.jks
+          if [ -z "$KEY_STORE_B64" ] || [ -z "$STORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "Missing signing secrets. Set KEY_STORE, KEY_STORE_PASSWORD, ALIAS, ALIAS_KEY_PASSWORD in repo Actions secrets."
+            exit 1
+          fi
+          echo "$KEY_STORE_B64" | base64 --decode > key.jks
+          {
+            echo "officialBuild=true"
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+            echo "fileDir=$(pwd)/key.jks"
+            [ -n "$CROWDIN_PROJECT_ID" ] && echo "crowdinProjectId=$CROWDIN_PROJECT_ID"
+            [ -n "$CROWDIN_API_KEY" ] && echo "crowdinApiKey=$CROWDIN_API_KEY"
+          } >> local.properties
 
       - name: Cache gradle
         uses: actions/cache@v4
@@ -117,16 +129,3 @@ jobs:
             ${{ steps.buildModule.outputs.debugFile }}
             app/src/main/assets/translators.json
           tag_name: oss-${{ steps.buildModule.outputs.ossNum }}
-
-      - name: Post to channel
-        if: ${{ github.event_name != 'pull_request' && success() && github.ref == 'refs/heads/future' }}
-        env:
-          CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL }}
-          BOT_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          COMMIT_URL: ${{ github.event.head_commit.url }}
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-        run: |
-          export release=${{ steps.buildModule.outputs.releaseFile }}
-          export debug=${{ steps.buildModule.outputs.debugFile }}
-          ESCAPED=`python3 -c 'import json,os,urllib.parse; msg = json.dumps(os.environ["COMMIT_MESSAGE"]); print(urllib.parse.quote(msg if len(msg) <= 1024 else json.dumps(os.environ["COMMIT_URL"])))'`
-          curl -v "https://api.telegram.org/bot${BOT_TOKEN}/sendMediaGroup?chat_id=${CHANNEL_ID}&media=%5B%7B%22type%22:%22document%22,%20%22media%22:%22attach://release%22%7D,%7B%22type%22:%22document%22,%20%22media%22:%22attach://debug%22,%22caption%22:${ESCAPED}%7D%5D"  -F release="@$release" -F debug="@$debug"

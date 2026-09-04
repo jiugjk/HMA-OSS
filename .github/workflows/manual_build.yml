@@ -42,17 +42,30 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Write release key
+      - name: Write signing key from secrets
         if: inputs.build_type == 'RELEASE' || inputs.build_type == 'BOTH'
+        env:
+          KEY_STORE_B64: ${{ secrets.KEY_STORE }}
+          STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ALIAS_KEY_PASSWORD }}
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+          CROWDIN_API_KEY: ${{ secrets.CROWDIN_LIST_MEMBERS_API_TOKEN }}
         run: |
-          echo officialBuild=true >> local.properties
-          echo storePassword='${{ secrets.KEY_STORE_PASSWORD }}' >> local.properties
-          echo keyAlias='${{ secrets.ALIAS }}' >> local.properties
-          echo keyPassword='${{ secrets.ALIAS_KEY_PASSWORD }}' >> local.properties
-          echo fileDir=`pwd`/key.jks >> local.properties
-          echo crowdinProjectId='${{ secrets.CROWDIN_PROJECT_ID }}' >> local.properties
-          echo crowdinApiKey='${{ secrets.CROWDIN_LIST_MEMBERS_API_TOKEN }}' >> local.properties
-          echo "${{ secrets.KEY_STORE }}" | base64 --decode > key.jks
+          if [ -z "$KEY_STORE_B64" ] || [ -z "$STORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "Missing signing secrets. Set KEY_STORE, KEY_STORE_PASSWORD, ALIAS, ALIAS_KEY_PASSWORD in repo Actions secrets."
+            exit 1
+          fi
+          echo "$KEY_STORE_B64" | base64 --decode > key.jks
+          {
+            echo "officialBuild=true"
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+            echo "fileDir=$(pwd)/key.jks"
+            [ -n "$CROWDIN_PROJECT_ID" ] && echo "crowdinProjectId=$CROWDIN_PROJECT_ID"
+            [ -n "$CROWDIN_API_KEY" ] && echo "crowdinApiKey=$CROWDIN_API_KEY"
+          } >> local.properties
 
       - name: Prepare debug env
         if: inputs.build_type == 'DEBUG'
