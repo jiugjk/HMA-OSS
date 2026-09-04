@@ -96,7 +96,9 @@ jobs:
         if: inputs.build_type == 'RELEASE' || inputs.build_type == 'BOTH'
         id: buildRelease
         run: |
-          ./gradlew :app:assembleRelease :zygote:assembleRelease
+          # zygote:generate*SignInfo needs the manager APK already on disk
+          ./gradlew :app:assembleRelease
+          ./gradlew :zygote:assembleRelease
           echo "releaseName=$(ls zygote/build/outputs/magisk/release/*.zip | awk -F '(/|.zip)' '{print $6}')" >> "$GITHUB_OUTPUT"
           echo "releaseFile=$(ls zygote/build/outputs/magisk/release/*.zip)" >> "$GITHUB_OUTPUT"
 
@@ -104,7 +106,8 @@ jobs:
         if: inputs.build_type == 'DEBUG' || inputs.build_type == 'BOTH'
         id: buildDebug
         run: |
-          ./gradlew :app:assembleDebug :zygote:assembleDebug
+          ./gradlew :app:assembleDebug
+          ./gradlew :zygote:assembleDebug
           echo "debugName=$(ls zygote/build/outputs/magisk/debug/*.zip | awk -F '(/|.zip)' '{print $6}')" >> "$GITHUB_OUTPUT"
           echo "debugFile=$(ls zygote/build/outputs/magisk/debug/*.zip)" >> "$GITHUB_OUTPUT"
 
