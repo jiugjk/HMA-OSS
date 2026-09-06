@@ -39,4 +39,7 @@ object ZygoteConstants {
 
     const val ACTION_USB_STATE = "android.hardware.usb.action.USB_STATE"
     const val USB_FUNCTION_ADB = "adb"
+
+    const val GBOARD_PACKAGE_NAME = "com.google.android.inputmethod.latin"
+    const val GBOARD_CLASS_NAME = "com.android.inputmethod.latin.LatinIME"
 }
