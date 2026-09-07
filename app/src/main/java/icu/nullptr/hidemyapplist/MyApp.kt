@@ -3,6 +3,7 @@ package icu.nullptr.hidemyapplist
 import android.app.Application
 import android.util.Log
 import androidx.appcompat.app.AppCompatDelegate
+import icu.nullptr.hidemyapplist.receiver.AppChangeReceiver
 import icu.nullptr.hidemyapplist.service.ConfigManager
 import icu.nullptr.hidemyapplist.service.PrefManager
 import icu.nullptr.hidemyapplist.service.ServiceClient
@@ -33,6 +34,7 @@ class MyApp : Application() {
     override fun onCreate() {
         super.onCreate()
         hmaApp = this
+        AppChangeReceiver.register(this)
 
         val handler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { t, e ->

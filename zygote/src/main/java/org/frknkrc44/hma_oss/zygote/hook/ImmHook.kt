@@ -27,6 +27,8 @@ import org.frknkrc44.hma_oss.zygote.util.ZLUtils.args
 import org.frknkrc44.hma_oss.zygote.util.ZLUtils.callStaticMethod
 import org.frknkrc44.hma_oss.zygote.util.ZLUtils.getArgument
 import org.frknkrc44.hma_oss.zygote.util.ZLUtils.returnType
+import org.frknkrc44.hma_oss.zygote.util.ZygoteConstants.GBOARD_CLASS_NAME
+import org.frknkrc44.hma_oss.zygote.util.ZygoteConstants.GBOARD_PACKAGE_NAME
 import org.frknkrc44.hma_oss.zygote.util.ZygoteConstants.IMM_IMPL_CLASS
 import org.frknkrc44.hma_oss.zygote.util.ZygoteConstants.IMM_SERVICE_CLASS
 import java.util.Collections
@@ -34,7 +36,18 @@ import java.util.Collections
 class ImmHook : IFrameworkHook {
     override val TAG = "ImmHook"
 
-    fun getFakeInputMethodInfo(caller: String): InputMethodInfo {
+    private companion object {
+        val defaultReturn by lazy {
+            InputMethodInfo(
+                GBOARD_PACKAGE_NAME,
+                GBOARD_CLASS_NAME,
+                "Gboard",
+                null,
+            )
+        }
+    }
+
+    fun getFakeInputMethodComponent(caller: String): ComponentName {
         val defaultInputMethod = service.getSpoofedSetting(
             caller,
             Settings.Secure.DEFAULT_INPUT_METHOD,
@@ -42,39 +55,34 @@ class ImmHook : IFrameworkHook {
         )
 
         if (defaultInputMethod?.value != null) {
-            try {
-                val component = ComponentName.unflattenFromString(defaultInputMethod.value!!)!!
-                logD(TAG) { "Package component: \"$component\"" }
-
-                val kbdPackage = resolveIMInfo(component.packageName)
-                return if (kbdPackage != null) {
-                    kbdPackage
-                } else {
-                    val appInfo = packageManager.getApplicationInfo(component.packageName, 0)
-
-                    InputMethodInfo(
-                        component.packageName,
-                        component.className,
-                        appInfo.loadLabel(packageManager),
-                        null,
-                    )
-                }
-            } catch (e: Throwable) {
-                logV(TAG, e) { e.message ?: "" }
+            val unflatten = ComponentName.unflattenFromString(defaultInputMethod.value!!)
+            if (unflatten != null) {
+                return unflatten
             }
         }
 
-        val kbdPackage = resolveIMInfo("com.google.android.inputmethod.latin")
-        if (kbdPackage != null) {
-            return kbdPackage
-        }
+        return ComponentName(GBOARD_PACKAGE_NAME, GBOARD_CLASS_NAME)
+    }
 
-        return InputMethodInfo(
-            "com.google.android.inputmethod.latin",
-            "com.android.inputmethod.latin.LatinIME",
-            "Gboard",
-            null,
-        )
+    fun getFakeInputMethodInfo(caller: String): InputMethodInfo {
+        val component = getFakeInputMethodComponent(caller)
+
+        return resolveIMInfo(component.packageName) ?: try {
+            val appInfo = packageManager.getApplicationInfo(component.packageName, 0)
+
+            InputMethodInfo(
+                component.packageName,
+                component.className,
+                appInfo.loadLabel(packageManager),
+                null,
+            )
+        } catch (_: Throwable) {
+            if (component.packageName == GBOARD_PACKAGE_NAME) {
+                defaultReturn
+            } else {
+                resolveIMInfo(GBOARD_PACKAGE_NAME) ?: defaultReturn
+            }
+        }
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -302,13 +310,17 @@ class ImmHook : IFrameworkHook {
     }
 
     private fun warnNotInstalledKeyboard(methodName: String, packageName: String) {
-        logW(TAG) { "@$methodName: PROBABLY spoofing for a not installed keyboard, please install $packageName or spoof for another keyboard by using settings templates to reduce detections. Do not care this message if you are sure the keyboard is installed correctly." }
+        logW(TAG) { "@$methodName: PROBABLY spoofing for a not installed/enabled keyboard, please install and enable $packageName or spoof for another keyboard by using settings templates to reduce detections. Do not care this message if you are sure the keyboard is installed correctly." }
     }
 
     private fun resolveIMInfo(packageName: String): InputMethodInfo? = binderLocalScope {
         val imManager = application.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
 
-        imManager?.inputMethodList?.firstOrNull { it.packageName == packageName }
+        imManager?.inputMethodList?.firstOrNull { it.packageName == packageName }.apply {
+            if (this == null) {
+                warnNotInstalledKeyboard("resolveIMInfo", packageName)
+            }
+        }
     }
 
     private fun callerIsSpoofed(caller: String) =

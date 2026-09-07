@@ -9,7 +9,6 @@ import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import icu.nullptr.hidemyapplist.common.Utils.nonHmaModules
 import icu.nullptr.hidemyapplist.service.ServiceClient
 import icu.nullptr.hidemyapplist.ui.view.ListItemView
 import org.frknkrc44.hma_oss.R
@@ -58,25 +57,21 @@ class FixIssueAdapter(
                 iconGravity = MaterialButton.ICON_GRAVITY_TEXT_START
 
                 setOnClickListener {
-                    if (packageName in nonHmaModules) {
-                        uninstallPackage(packageName)
-                    } else {
-                        MaterialAlertDialogBuilder(context)
-                            .setTitle(R.string.home_migrate_data)
-                            .setMessage(context.getString(
-                                R.string.sick_mode_notice
-                            ) + "\n\n" + context.getString(
-                                R.string.home_migrate_data_summary
-                            ))
-                            .setPositiveButton(R.string.yes) { _, _ ->
-                                migrateOrUninstallOnly(true, packageName)
-                            }
-                            .setNegativeButton(android.R.string.cancel, null)
-                            .setNeutralButton(R.string.home_migrate_uninstall_only) { _, _ ->
-                                migrateOrUninstallOnly(false, packageName)
-                            }
-                            .show()
-                    }
+                    MaterialAlertDialogBuilder(context)
+                        .setTitle(R.string.home_migrate_data)
+                        .setMessage(context.getString(
+                            R.string.sick_mode_notice
+                        ) + "\n\n" + context.getString(
+                            R.string.home_migrate_data_summary
+                        ))
+                        .setPositiveButton(R.string.yes) { _, _ ->
+                            migrateOrUninstallOnly(true, packageName)
+                        }
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .setNeutralButton(R.string.home_migrate_uninstall_only) { _, _ ->
+                            migrateOrUninstallOnly(false, packageName)
+                        }
+                        .show()
                 }
             }
         }
