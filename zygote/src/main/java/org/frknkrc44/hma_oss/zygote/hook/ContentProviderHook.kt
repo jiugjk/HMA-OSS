@@ -1,6 +1,7 @@
 package org.frknkrc44.hma_oss.zygote.hook
 
 import android.content.AttributionSource
+import android.content.ContentResolver
 import android.database.Cursor
 import android.database.MatrixCursor
 import android.net.Uri
@@ -9,6 +10,7 @@ import android.os.Bundle
 import android.provider.Settings
 import com.v7878.unsafe.invoke.EmulatedStackFrame
 import icu.nullptr.hidemyapplist.common.CollectionUtils.firstWithType
+import org.frknkrc44.hma_oss.zygote.util.ContentProviderUtils.getOverriddenDatabaseName
 import org.frknkrc44.hma_oss.zygote.util.Logcat.logD
 import org.frknkrc44.hma_oss.zygote.util.ServiceUtils
 import org.frknkrc44.hma_oss.zygote.util.ZLUtils.args
@@ -41,25 +43,50 @@ class ContentProviderHook : IFrameworkHook {
                 val segments = uri.pathSegments
                 if (segments.isEmpty()) return@hookAfter
 
-                logD(TAG) {
-                    val projection = frame.args[uriIdx + 1] as Array<String>?
-                    val args = frame.args[uriIdx + 2] as Bundle?
+                val projection = frame.args[uriIdx + 1] as? Array<String>
+                val args = frame.args[uriIdx + 2] as? Bundle
 
+                logD(TAG) {
                     "@spoofSettings QUERY in ${callingApps.contentToString()}: $uri, ${projection?.contentToString()}, $args"
                 }
 
-                val database = segments[0]
+                var database = segments[0]
 
-                if (segments.size >= 2) {
-                    val name = segments[1]
+                if (segments.size >= 2 || args != null) {
+                    val name = if (segments.size >= 2) {
+                        segments[1]
+                    } else {
+                        val querySel = args!!.getString(ContentResolver.QUERY_ARG_SQL_SELECTION)
+                        val query = querySel?.split(" ")
+                            ?.map { it.substringBeforeLast("=").trim() }
 
-                    logD(TAG) { "@spoofSettings QUERY received caller: $caller, database: $database, name: $name" }
+                        logD(TAG) { "@spoofSettings QUERY caller: $caller, querySel: $querySel, query: $query" }
+
+                        val idx = query?.indexOfFirst { it == "name" } ?: return@hookAfter
+
+                        args.getStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS)!![idx]
+                    }
+
+                    logD(TAG) { "@spoofSettings QUERY received caller: $caller, database: $database, name: $name, args: $args" }
+
+                    database = getOverriddenDatabaseName(database, name)
 
                     val replacement = service.getSpoofedSetting(caller, name, database)
                     if (replacement != null) {
+                        val columnNames = projection ?: arrayOf("name", "value")
+                        val nameInColumns = "name" in columnNames
+                        val valueInColumns = "value" in columnNames
+
+                        val returnedArray = when {
+                            nameInColumns && valueInColumns -> arrayOf(replacement.name, replacement.value)
+                            valueInColumns -> arrayOf(replacement.value)
+                            nameInColumns -> arrayOf(replacement.name)
+                            else -> return@hookAfter
+                        }
+
                         logD(TAG) { "@spoofSettings QUERY $name in $database replaced for $caller" }
-                        returnValue.result = MatrixCursor(arrayOf("name", "value"), 1).apply {
-                            addRow(arrayOf(replacement.name, replacement.value))
+                        returnValue.result = MatrixCursor(columnNames, 1).apply {
+                            addRow(returnedArray)
                         }
 
                         service.increaseSettingsFilterCount(caller)
@@ -89,6 +116,11 @@ class ContentProviderHook : IFrameworkHook {
 
                     while (result.moveToNext()) {
                         val name = result.getString(columns.keys.indexOf("name"))
+
+                        // skip when the entry is not a member of this database
+                        val dbName = getOverriddenDatabaseName(database, name)
+                        if (dbName != database) continue
+
                         keyColumn.add(name)
 
                         val replacement = service.getSpoofedSetting(caller, name, database)
