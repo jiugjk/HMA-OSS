@@ -28,6 +28,7 @@ class AppPresetListAdapter(
                 if (item.type == null) {
                     showAsHeader()
                 } else {
+                    showAsItem()
                     setIcon(
                         when (item.type) {
                             ConfigManager.PTType.APP -> R.drawable.baseline_assignment_24

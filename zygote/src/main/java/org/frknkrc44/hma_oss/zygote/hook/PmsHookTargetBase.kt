@@ -83,8 +83,8 @@ abstract class PmsHookTargetBase : IFrameworkHook {
                 ) { methodName, frame, returnValue ->
                     applyPackageHiding(
                         methodName,
-                        { frame.args.firstOrNullWithType() },
-                        { frame.args.firstOrNullWithType() },
+                        { Binder.getCallingUid() },
+                        { frame.args.firstOrNullWithType<String>() },
                         ::getCallingApps,
                         { returnValue.result = null },
                     )
@@ -96,8 +96,8 @@ abstract class PmsHookTargetBase : IFrameworkHook {
                 ) { methodName, frame, returnValue ->
                     applyPackageHiding(
                         methodName,
-                        { frame.args.firstOrNullWithType() },
-                        { frame.args.firstOrNullWithType() },
+                        { Binder.getCallingUid() },
+                        { frame.args.firstOrNullWithType<String>() },
                         ::getCallingApps,
                         { returnValue.result = null },
                     )

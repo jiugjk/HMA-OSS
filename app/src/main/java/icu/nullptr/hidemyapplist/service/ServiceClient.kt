@@ -80,10 +80,14 @@ object ServiceClient : IHMAService, IBinder.DeathRecipient {
         }
         set(text) {
             val configFile = File("${hmaApp.filesDir.absolutePath}/temp_config.json")
-            configFile.writeText(text)
-
-            val parcelFD = ParcelFileDescriptor.open(configFile, ParcelFileDescriptor.MODE_READ_ONLY)
-            writeFD(Constants.PARCEL_TYPE_CONFIG, parcelFD)
+            try {
+                configFile.writeText(text)
+                ParcelFileDescriptor.open(configFile, ParcelFileDescriptor.MODE_READ_ONLY).use { parcelFD ->
+                    writeFD(Constants.PARCEL_TYPE_CONFIG, parcelFD)
+                }
+            } finally {
+                configFile.delete()
+            }
         }
 
     fun forceStop(packageName: String) {

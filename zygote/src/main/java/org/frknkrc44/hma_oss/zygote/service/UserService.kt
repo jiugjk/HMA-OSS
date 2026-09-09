@@ -35,18 +35,19 @@ object UserService {
                 logD(TAG) { "Calculated user id: $userId" }
 
                 val provider = ActivityManagerApis.getContentProviderExternal(Constants.PROVIDER_AUTHORITY, userId, null, null)
-                assert (provider != null) {
-                    "Failed to get provider"
+                if (provider == null) {
+                    logE(TAG) { "Failed to get provider" }
+                    return
                 }
                 val extras = Bundle()
                 extras.putBinder("binder", service)
                 val reply = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     val attr = AttributionSource.Builder(1000).setPackageName("android").build()
-                    provider?.call(attr, Constants.PROVIDER_AUTHORITY, "", null, extras)
+                    provider.call(attr, Constants.PROVIDER_AUTHORITY, "", null, extras)
                 } else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.R) {
-                    provider?.call("android", null, Constants.PROVIDER_AUTHORITY, "", null, extras)
+                    provider.call("android", null, Constants.PROVIDER_AUTHORITY, "", null, extras)
                 } else {
-                    provider?.call("android", Constants.PROVIDER_AUTHORITY, "", null, extras)
+                    provider.call("android", Constants.PROVIDER_AUTHORITY, "", null, extras)
                 }
                 if (reply == null) {
                     logE(TAG) { "Failed to send binder to app" }

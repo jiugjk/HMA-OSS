@@ -47,8 +47,8 @@ object ConfigManager {
         try {
             val rawConfig = ServiceClient.config
             config = JsonConfig.parse(rawConfig)
-        } catch (_: Throwable) {
-            // ignore the issues
+        } catch (t: Throwable) {
+            log(Log.WARN, TAG, "Failed to parse config: ${t.message}")
         }
 
         config.configVersion = BuildConfig.CONFIG_VERSION
@@ -155,6 +155,10 @@ object ConfigManager {
         return config.templates.containsKey(name)
     }
 
+    fun hasSettingTemplate(name: String?): Boolean {
+        return config.settingsTemplates.containsKey(name)
+    }
+
     fun getTemplateList(): MutableList<TemplateInfo> {
         return config.templates.mapTo(mutableListOf()) { TemplateInfo(it.key, PTType.APP, it.value.isWhitelist) }
     }
@@ -179,13 +183,15 @@ object ConfigManager {
 
     fun renameTemplate(oldName: String, newName: String) {
         if (oldName == newName) return
+        if (config.templates.containsKey(newName)) return
+        val template = config.templates[oldName] ?: return
         config.scope.forEach { (_, appInfo) ->
             if (appInfo.applyTemplates.contains(oldName)) {
                 appInfo.applyTemplates.remove(oldName)
                 appInfo.applyTemplates.add(newName)
             }
         }
-        config.templates[newName] = config.templates[oldName]!!
+        config.templates[newName] = template
         config.templates.remove(oldName)
         saveConfig()
     }
@@ -229,13 +235,15 @@ object ConfigManager {
 
     fun renameSettingTemplate(oldName: String, newName: String) {
         if (oldName == newName) return
+        if (config.settingsTemplates.containsKey(newName)) return
+        val template = config.settingsTemplates[oldName] ?: return
         config.scope.forEach { (_, appInfo) ->
             if (appInfo.applySettingTemplates.contains(oldName)) {
                 appInfo.applySettingTemplates.remove(oldName)
                 appInfo.applySettingTemplates.add(newName)
             }
         }
-        config.settingsTemplates[newName] = config.settingsTemplates[oldName]!!
+        config.settingsTemplates[newName] = template
         config.settingsTemplates.remove(oldName)
         saveConfig()
     }
@@ -263,10 +271,10 @@ object ConfigManager {
         return config.scope[packageName]
     }
 
-    fun setAppConfig(packageName: String, appConfig: JsonConfig.AppConfig?) {
+    fun setAppConfig(packageName: String, appConfig: JsonConfig.AppConfig?, persist: Boolean = true) {
         if (appConfig == null) config.scope.remove(packageName)
         else config.scope[packageName] = appConfig
-        saveConfig()
+        if (persist) saveConfig()
     }
 
     fun clearUninstalledAppConfigs(inConfig: JsonConfig = config, onFinish: (success: Boolean) -> Unit) {
@@ -303,7 +311,7 @@ object ConfigManager {
                     }
                 }
 
-                if ((scopeRemoveCount > 0 || cleanedAppCount > 0) && inConfig == config) {
+                if ((scopeRemoveCount > 0 || cleanedAppCount > 0) && inConfig === config) {
                     log(Log.INFO, TAG, "Pruned $scopeRemoveCount app configs and $cleanedAppCount app entries")
                     saveConfig()
                 }
@@ -316,19 +324,7 @@ object ConfigManager {
     }
 
     fun getRawConfig(deepCopy: Boolean): JsonConfig {
-        if (deepCopy) {
-            val scopeCopy = config.scope.toMutableMap()
-            val templateCopy = config.templates.toMutableMap()
-            val settingsTemplateCopy = config.settingsTemplates.toMutableMap()
-
-            return config.copy(
-                scope = scopeCopy,
-                templates = templateCopy,
-                settingsTemplates = settingsTemplateCopy,
-            )
-        }
-
-        return config
+        return if (deepCopy) config.copyDeep() else config
     }
 
     fun resetConfig() {

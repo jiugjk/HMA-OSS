@@ -105,9 +105,11 @@ class AppPresets private constructor() {
                 }.onFailure { fail ->
                     loggerFunction?.invoke(Log.ERROR) { fail.toString() }
                 }
-
-                loggerFunction?.invoke(Log.DEBUG) { preset.toString() }
             }
+        }
+
+        loggerFunction?.invoke(Log.DEBUG) {
+            "Presets reloaded from scratch for ${appsList.size} apps"
         }
 
         manifestDataCache.clear()
@@ -119,19 +121,16 @@ class AppPresets private constructor() {
     fun handlePackageAdded(
         pms: IPackageManager,
         packageName: String,
+        userId: Int = 0,
         onModifyCache: (preset: String) -> Unit,
     ) {
-        if (presetList.any { it.value.containsPackage(packageName) }) {
-            return
-        }
-
         var appInfo: ApplicationInfo? = null
         var addedInAList = false
 
         presetList.forEach {
             if (!it.value.containsPackage(packageName)) {
                 if (appInfo == null)
-                    appInfo = pms.getPackageInfoCompat(packageName, 0, 0)?.applicationInfo
+                    appInfo = pms.getPackageInfoCompat(packageName, 0, userId)?.applicationInfo
 
                 if (appInfo != null) {
                     runCatching {
@@ -148,7 +147,7 @@ class AppPresets private constructor() {
         }
 
         if (appInfo == null)
-            appInfo = pms.getPackageInfoCompat(packageName, 0, 0)?.applicationInfo
+            appInfo = pms.getPackageInfoCompat(packageName, 0, userId)?.applicationInfo
 
         if (appInfo != null)
             addedInAList = RiskyPackageUtils.instance.tryToAddIntoGMSConnectionList(appInfo) {

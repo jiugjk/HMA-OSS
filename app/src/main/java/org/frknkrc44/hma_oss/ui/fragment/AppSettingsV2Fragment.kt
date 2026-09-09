@@ -50,21 +50,12 @@ class AppSettingsV2Fragment : Fragment(R.layout.fragment_settings) {
         private const val TAG = "AppSettingsV2Fragment"
     }
 
-    private var argsOverride: AppSettingsV2FragmentArgs? = null
-
     private val binding by viewBinding(FragmentSettingsBinding::bind)
     private val viewModel by viewModels<AppSettingsViewModel> {
-        var args = if (argsOverride != null) {
-            argsOverride!!
-        } else {
-            val safeArgs by navArgs<AppSettingsV2FragmentArgs>()
-
-            safeArgs
-        }
+        val args by navArgs<AppSettingsV2FragmentArgs>()
 
         val cfg: JsonConfig.AppConfig? = if (args.mode != AppConstants.APP_CONFIG_MODE_SINGLE) {
-            if (args.inputConfig != null) JsonConfig.AppConfig.parse(args.inputConfig)
-            else null
+            args.inputConfig?.let { JsonConfig.AppConfig.parse(it) }
         } else {
             ConfigManager.getAppConfig(args.packageName)
         }
@@ -242,7 +233,7 @@ class AppSettingsV2Fragment : Fragment(R.layout.fragment_settings) {
                                 R.array.app_action_texts,
                             ) { _, which ->
                                 parent.saveConfig()
-                                val userIds = PackageHelper.loadUserIds(pack.app)
+                                val userIds = PackageHelper.loadUserIds(pack.app).sorted()
                                 val forceStop = which == 0
 
                                 if (userIds.size == 1) {
@@ -251,8 +242,8 @@ class AppSettingsV2Fragment : Fragment(R.layout.fragment_settings) {
                                     MaterialAlertDialogBuilder(pref.context).apply {
                                         setItems(
                                             userIds.map { id -> id.toString() }.toTypedArray(),
-                                        ) { _, userId ->
-                                            startMainActivity(userId, forceStop)
+                                        ) { _, index ->
+                                            startMainActivity(userIds[index], forceStop)
                                         }
                                     }.show()
                                 }

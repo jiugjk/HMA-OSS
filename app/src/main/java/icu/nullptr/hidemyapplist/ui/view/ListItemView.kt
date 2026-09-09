@@ -64,6 +64,8 @@ class ListItemView @JvmOverloads constructor(
 
     fun showAsHeader() {
         showIcon(false)
+        isClickable = false
+        setOnClickListener(null)
 
         with(binding.text) {
             typeface = Typeface.DEFAULT_BOLD
@@ -75,6 +77,17 @@ class ListItemView @JvmOverloads constructor(
 
             val padding = dp2Px(resources, 8).toInt()
             setPaddingRelative(paddingStart, padding, paddingEnd, padding)
+        }
+    }
+
+    fun showAsItem() {
+        showIcon(true)
+        isClickable = true
+
+        with(binding.text) {
+            typeface = Typeface.DEFAULT
+            setTextColor(context.themeColor(com.google.android.material.R.attr.colorOnSurface))
+            setPaddingRelative(paddingStart, 0, paddingEnd, 0)
         }
     }
 

@@ -4,8 +4,6 @@ import android.content.ContentResolver
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.view.Menu
-import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.WindowInsets
@@ -14,7 +12,6 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.IdRes
 import androidx.annotation.MenuRes
 import androidx.appcompat.widget.Toolbar
-import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentTransaction
 import androidx.navigation.NavOptions
@@ -57,22 +54,14 @@ fun Fragment.setupToolbar(
     if (subtitle != null) toolbar.subtitle = subtitle
     toolbar.tooltipText = title
     if (menuRes != null) {
-        val menuProvider = object : MenuProvider {
-            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-                menuInflater.inflate(menuRes, menu)
-            }
-
-            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-                return onMenuOptionSelected?.let {
-                    it(menuItem); true
-                } ?: false
-            }
-        }
         toolbar.menu.clear()
         toolbar.inflateMenu(menuRes)
-        toolbar.setOnMenuItemClickListener(menuProvider::onMenuItemSelected)
-        requireActivity().addMenuProvider(menuProvider)
-        menuProvider.onPrepareMenu(toolbar.menu)
+        toolbar.setOnMenuItemClickListener { menuItem ->
+            onMenuOptionSelected?.let {
+                it(menuItem)
+                true
+            } ?: false
+        }
     }
 }
 

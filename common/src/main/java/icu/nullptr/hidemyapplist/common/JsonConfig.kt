@@ -210,6 +210,16 @@ data class JsonConfig(
         companion object {
             fun parse(json: String) = encoder.decodeFromString<AppConfig>(json)
         }
+
+        fun copyDeep() = copy(
+            restrictedZygotePermissions = restrictedZygotePermissions.toList(),
+            applyTemplates = applyTemplates.toMutableSet(),
+            applyPresets = applyPresets.toMutableSet(),
+            applySettingTemplates = applySettingTemplates.toMutableSet(),
+            applySettingsPresets = applySettingsPresets.toMutableSet(),
+            extraAppList = extraAppList.toMutableSet(),
+            extraOppositeAppList = extraOppositeAppList.toMutableSet(),
+        )
     }
 
     @Serializable
@@ -227,8 +237,20 @@ data class JsonConfig(
 
     companion object {
         fun parse(json: String) = encoder.decodeFromString<JsonConfig>(json)
-
     }
 
     override fun toString() = encoder.encodeToString(this)
+
+    fun copyDeep() = copy(
+        ignoredPackagesForPresets = ignoredPackagesForPresets.toMutableSet(),
+        templates = templates.mapValues { (_, template) ->
+            template.copy(appList = template.appList.toSet())
+        }.toMutableMap(),
+        settingsTemplates = settingsTemplates.mapValues { (_, template) ->
+            template.copy(settingsList = template.settingsList.toSet())
+        }.toMutableMap(),
+        disabledHooks = disabledHooks.toMutableList(),
+        defaultConfig = defaultConfig?.copyDeep(),
+        scope = scope.mapValues { (_, appConfig) -> appConfig.copyDeep() }.toMutableMap(),
+    )
 }

@@ -33,17 +33,23 @@ class TemplateSettingsFragment : Fragment(R.layout.fragment_template_settings) {
 
     private fun onBack(delete: Boolean) {
         viewModel.name = viewModel.name?.trim()
-        if (viewModel.name != viewModel.originalName && (ConfigManager.hasTemplate(viewModel.name) || viewModel.name == null) || delete) {
-            val builder = MaterialAlertDialogBuilder(requireContext())
-                .setTitle(if (delete) R.string.template_delete_title else R.string.template_name_invalid)
-                .setMessage(if (delete) R.string.template_delete else R.string.template_name_already_exist)
-                .setPositiveButton(android.R.string.ok) { _, _ ->
-                    saveResult(delete)
-                }
-            if (delete) builder.setNegativeButton(android.R.string.cancel, null)
-            builder.show()
-        } else {
-            saveResult(false)
+        when {
+            delete -> {
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(R.string.template_delete_title)
+                    .setMessage(R.string.template_delete)
+                    .setPositiveButton(android.R.string.ok) { _, _ -> saveResult(true) }
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show()
+            }
+            viewModel.name != viewModel.originalName && (ConfigManager.hasTemplate(viewModel.name) || viewModel.name == null) -> {
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(R.string.template_name_invalid)
+                    .setMessage(R.string.template_name_already_exist)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show()
+            }
+            else -> saveResult(false)
         }
     }
 

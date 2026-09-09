@@ -278,7 +278,7 @@ class ImmHook : IFrameworkHook {
         val callingUserId = getUserFromCallingUid(callingUid)
 
         val calculatedList = inList.filter { imInfo ->
-            service.shouldHide(caller, imInfo.packageName, callingUserId)
+            !service.shouldHide(caller, imInfo.packageName, callingUserId)
         }
 
         logV(TAG) { "@getInputMethodList*calculator: $callingUid - Calculated: ${calculatedList.map { it.component }}" }

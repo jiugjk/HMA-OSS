@@ -4,7 +4,6 @@ import com.v7878.unsafe.Reflection.getDeclaredField
 import com.v7878.unsafe.Reflection.getDeclaredMethod
 import com.v7878.unsafe.invoke.EmulatedStackFrame
 import com.v7878.unsafe.invoke.EmulatedStackFrame.RETURN_VALUE_IDX
-import icu.nullptr.hidemyapplist.common.lazyWithReceiver
 import org.frknkrc44.hma_oss.zygote.service.SystemServerHook
 import java.lang.reflect.Constructor
 import java.lang.reflect.Field
@@ -18,20 +17,23 @@ object ZLUtils {
 
     /**
      * @return The first argument
+     *
+     * Do not cache this on the frame instance: hook runtimes may reuse
+     * EmulatedStackFrame objects across invocations.
      */
-    val EmulatedStackFrame.thisObject by lazyWithReceiver { getArgument(0) }
+    val EmulatedStackFrame.thisObject get() = getArgument(0)
 
     /**
      * - `args[0]: thisObject`
      * - `args[1:]: function args`
      */
-    val EmulatedStackFrame.args by lazyWithReceiver { dumpArgs() }
+    val EmulatedStackFrame.args get() = dumpArgs()
 
     /**
      * - `argTypes[0]: thisObject`
      * - `argTypes[1:]: function args`
      */
-    val EmulatedStackFrame.argTypes by lazyWithReceiver { dumpArgTypes() }
+    val EmulatedStackFrame.argTypes get() = dumpArgTypes()
 
     internal fun EmulatedStackFrame.dumpArgs(skipFirst: Boolean = false): Array<Any?> {
         return mutableListOf<Any?>().let {
@@ -67,7 +69,7 @@ object ZLUtils {
      * - `index == 0: thisObject`
      * - `index >= 1: function args`
      */
-    fun EmulatedStackFrame.getArgument(index: Int): Any {
+    fun EmulatedStackFrame.getArgument(index: Int): Any? {
         val accessor = accessor()
 
         return when (accessor.getArgumentShorty(index)) {
@@ -84,7 +86,7 @@ object ZLUtils {
         }
     }
 
-    fun EmulatedStackFrame.setArgument(index: Int, value: Any) {
+    fun EmulatedStackFrame.setArgument(index: Int, value: Any?) {
         val accessor = accessor()
 
         when (accessor.getArgumentShorty(index)) {
@@ -170,15 +172,15 @@ object ZLUtils {
     }
 
     fun findField(clazz: Class<*>, name: String): Field? {
-        var currentClazz: Class<*> = clazz
-        var field: Field? = null
-
-        while (field == null && currentClazz.javaClass.simpleName != "Object") {
-            field = runCatching { currentClazz.getField(name) }.getOrNull()
-            currentClazz = clazz.superclass.javaClass
+        var currentClazz: Class<*>? = clazz
+        while (currentClazz != null) {
+            try {
+                return currentClazz.getDeclaredField(name).apply { isAccessible = true }
+            } catch (_: NoSuchFieldException) {
+                currentClazz = currentClazz.superclass
+            }
         }
-
-        return field
+        return null
     }
 
     fun EmulatedStackFrame.shortyEquals(index: Int, shorty: Char): Boolean {

@@ -10,22 +10,25 @@ sh "$MODDIR/update_desc.sh"
 echo "- Updated module status"
 
 install_pkg() {
-  pm install --user $1 $APK_FILE 2>&1
-
-  [ $? -ne 0 ] && echo "! Cannot install the manager app for user "$1 || true
+  pm install --user "$1" "$APK_FILE" 2>&1
+  status=$?
+  if [ "$status" -ne 0 ]; then
+    echo "! Cannot install the manager app for user $1"
+  fi
+  return "$status"
 }
 
 launch_pkg() {
-  echo "- Launching HMA-OSS manager on user "$1
-  am start -n $PKG/$ACTIVITY --user $1
+  echo "- Launching HMA-OSS manager on user $1"
+  am start -n "$PKG/$ACTIVITY" --user "$1"
 }
 
 for user in $(pm list users | cut -f1 -d: | cut -f2 -d{ | tail -n +2)
   do
     # if path detected in user then install the manager app for it (except Xiaomi's dual app space)
-    if [ "$user" != "999" ] && pm path --user $user $PKG &> /dev/null
+    if [ "$user" != "999" ] && pm path --user "$user" "$PKG" &> /dev/null
     then
-      launch_pkg $user
+      launch_pkg "$user"
       exit 0
     fi
 done

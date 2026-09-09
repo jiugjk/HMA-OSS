@@ -2,15 +2,36 @@ package icu.nullptr.hidemyapplist.common
 
 object CollectionUtils {
     inline fun <K, V> MutableMap<K, V>.removeIf(predicate: (K, V) -> Boolean) {
-        this.filter { (key, value) -> predicate(key, value) }.forEach { this.remove(it.key) }
+        val iterator = entries.iterator()
+        while (iterator.hasNext()) {
+            val entry = iterator.next()
+            if (predicate(entry.key, entry.value)) iterator.remove()
+        }
     }
 
     inline fun <K, V> MutableMap<K, V>.removeIfWithCount(predicate: (K, V) -> Boolean): Int {
-        return this.filter { (key, value) -> predicate(key, value) }.count { this.remove(it.key) != null }
+        var count = 0
+        val iterator = entries.iterator()
+        while (iterator.hasNext()) {
+            val entry = iterator.next()
+            if (predicate(entry.key, entry.value)) {
+                iterator.remove()
+                count++
+            }
+        }
+        return count
     }
 
     inline fun <K> MutableSet<K>.removeIfWithCount(predicate: (K) -> Boolean): Int {
-        return this.filter { key -> predicate(key) }.count { this.remove(it) }
+        var count = 0
+        val iterator = iterator()
+        while (iterator.hasNext()) {
+            if (predicate(iterator.next())) {
+                iterator.remove()
+                count++
+            }
+        }
+        return count
     }
 
     inline fun <reified T> Array<*>.firstWithType(): T {

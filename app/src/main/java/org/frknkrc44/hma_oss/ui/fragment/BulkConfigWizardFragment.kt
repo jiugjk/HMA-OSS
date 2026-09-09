@@ -77,8 +77,9 @@ class BulkConfigWizardFragment : Fragment(R.layout.fragment_bulk_config_wizard) 
                 if (viewModel.appliedAppList.value.isEmpty()) return@setOnClickListener
 
                 for (pkg in viewModel.appliedAppList.value) {
-                    ConfigManager.setAppConfig(pkg, viewModel.appConfig.value)
+                    ConfigManager.setAppConfig(pkg, viewModel.appConfig.value?.copyDeep(), persist = false)
                 }
+                ConfigManager.saveConfig()
 
                 showToast(android.R.string.ok)
                 navController.navigateUp()

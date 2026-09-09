@@ -32,7 +32,6 @@ class AppChangeReceiver : BroadcastReceiver() {
         if (intent.action in actions) {
             ServiceClient.log(Log.INFO, TAG, "Received intent: $intent")
             PackageHelper.invalidateCache()
-            // ServiceClient.handlePackageEvent(intent.action, intent.data?.encodedSchemeSpecificPart)
         }
     }
 }

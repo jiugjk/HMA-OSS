@@ -5,10 +5,8 @@ import android.widget.Filterable
 import androidx.recyclerview.widget.RecyclerView
 import icu.nullptr.hidemyapplist.common.CollectionUtils.sync
 import icu.nullptr.hidemyapplist.service.PrefManager
-import icu.nullptr.hidemyapplist.ui.util.get
 import icu.nullptr.hidemyapplist.ui.view.AppItemView
 import icu.nullptr.hidemyapplist.util.PackageHelper
-import kotlinx.coroutines.runBlocking
 import org.frknkrc44.hma_oss.BuildConfig
 
 abstract class AppSelectAdapter(
@@ -22,9 +20,8 @@ abstract class AppSelectAdapter(
 
     private inner class AppFilter : Filter() {
         override fun performFiltering(constraint: CharSequence): FilterResults {
-            return runBlocking {
-                val constraintLowered = constraint.toString().trim().lowercase()
-                val filteredList = PackageHelper.appList.get().filter {
+            val constraintLowered = constraint.toString().trim().lowercase()
+            val filteredList = PackageHelper.appList.value.filter {
                     if (firstFilter?.invoke(it) == false) return@filter false
                     if (!PrefManager.appFilter_showSystem && PackageHelper.isSystem(it)) return@filter false
                     if (it == BuildConfig.APPLICATION_ID && hideMyself) return@filter false
@@ -32,8 +29,7 @@ abstract class AppSelectAdapter(
                     label.lowercase().contains(constraintLowered) || it.lowercase().contains(constraintLowered)
                 }
 
-                FilterResults().also { it.values = filteredList }
-            }
+            return FilterResults().also { it.values = filteredList }
         }
 
         @Suppress("UNCHECKED_CAST", "NotifyDataSetChanged")

@@ -26,9 +26,11 @@ object Utils {
 
     fun <T> binderLocalScope(block: () -> T): T {
         val identity = Binder.clearCallingIdentity()
-        val result = block()
-        Binder.restoreCallingIdentity(identity)
-        return result
+        return try {
+            block()
+        } finally {
+            Binder.restoreCallingIdentity(identity)
+        }
     }
 
     fun IPackageManager.getInstalledApplicationsCompat(flags: Long, userId: Int): List<ApplicationInfo> {
@@ -81,18 +83,17 @@ object Utils {
     }
 
     fun checkSplitPackages(appInfo: ApplicationInfo, onZipFile: (String, ZipFile) -> Boolean): Boolean {
-        val allLocations = setOf(appInfo.sourceDir, appInfo.publicSourceDir) /*+
-                (appInfo.splitSourceDirs ?: arrayOf()) +
-                (appInfo.splitPublicSourceDirs ?: arrayOf())*/
+        val allLocations = buildSet {
+            add(appInfo.sourceDir)
+            add(appInfo.publicSourceDir)
+            appInfo.splitSourceDirs?.forEach { add(it) }
+            appInfo.splitPublicSourceDirs?.forEach { add(it) }
+        }.filterNotNull()
 
         return allLocations.any { filePath ->
-            ZipFile(filePath).use { zipFile ->
-                if (onZipFile(filePath, zipFile)) {
-                    return true
-                }
-            }
-
-            return false
+            runCatching {
+                ZipFile(filePath).use { zipFile -> onZipFile(filePath, zipFile) }
+            }.getOrDefault(false)
         }
     }
 
