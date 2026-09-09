@@ -37,7 +37,8 @@ class ZygoteHook : IFrameworkHook {
                 hookIntoZygoteProcess(frame)
             }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN) {
+            // TODO: Try to find a way for Android 12- compatibility without harming TANGO support
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 // Try to fix PrivIsolated
                 hookBefore(
                     SERVICE_RECORD_CLASS,
@@ -54,7 +55,9 @@ class ZygoteHook : IFrameworkHook {
                     logD(TAG) { "@serviceRecord: Isolated process becomes app zygote process for $caller service" }
                     serviceInfo.flags = serviceInfo.flags or ServiceInfo.FLAG_USE_APP_ZYGOTE
                 }
+            }
 
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN) {
                 hookBefore(
                     NATIVE_ZYGOTE_PROCESS_CLASS,
                     "start",
@@ -95,10 +98,13 @@ class ZygoteHook : IFrameworkHook {
 
         var perms = service.getRestrictedZygotePermissions(caller) ?: return
         if (perms.isNotEmpty()) {
-            val gIDs = frame.args[pair.second] as? IntArray ?: return
+            perms = perms.filter {
+                // reject if not available in GID_PAIRS, or it is APP_ZYGOTE_GID
+                Constants.GID_PAIRS.containsValue(it) || it == Constants.APP_ZYGOTE_GID
+            }
+            if (perms.isEmpty()) return
 
-            // add more security, reject if not available in GID_PAIRS
-            perms = perms.filter { Constants.GID_PAIRS.containsValue(it) }
+            val gIDs = frame.args[pair.second] as? IntArray ?: return
 
             logD(TAG) { "@startZygoteProcess: GIDs are ${gIDs.contentToString()}, removing $perms now" }
             frame.setArgument(pair.second, gIDs.filter { it !in perms }.toIntArray())
