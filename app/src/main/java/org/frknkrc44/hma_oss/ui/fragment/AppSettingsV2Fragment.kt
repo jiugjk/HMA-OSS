@@ -55,8 +55,7 @@ class AppSettingsV2Fragment : Fragment(R.layout.fragment_settings) {
         val args by navArgs<AppSettingsV2FragmentArgs>()
 
         val cfg: JsonConfig.AppConfig? = if (args.mode != AppConstants.APP_CONFIG_MODE_SINGLE) {
-            if (args.inputConfig != null) JsonConfig.AppConfig.parse(args.inputConfig)
-            else null
+            args.inputConfig?.let { JsonConfig.AppConfig.parse(it) }
         } else {
             ConfigManager.getAppConfig(args.packageName)
         }

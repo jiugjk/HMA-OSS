@@ -79,6 +79,12 @@ object PackageHelper {
 
     val refreshing get() = isRefreshing.value
 
+    private fun userIdOf(userHandle: UserHandle): Int {
+        return runCatching {
+            UserHandle::class.java.getMethod("getIdentifier").invoke(userHandle) as Int
+        }.getOrElse { userHandle.hashCode() }
+    }
+
     init {
         invalidateCache()
     }
@@ -95,7 +101,7 @@ object PackageHelper {
 
                 mutableMapOf<String, PackageCache>().also { cacheMap ->
                     for (userProfile: UserHandle in profiles) {
-                        val userId = userProfile.getIdentifier()
+                        val userId = userIdOf(userProfile)
                         val packages = ServiceClient.getPackageNames(userId) ?: arrayOf<String>()
                         for (packageName in packages) {
                             if (packageName in Constants.packagesShouldNotHide) continue
