@@ -113,7 +113,7 @@ class ActivityHook : IFrameworkHook {
                             ACTIVITY_STARTER_CLASS,
                             "executeRequest",
                         ) { _, frame, returnValue ->
-                            val request = frame.getArgument(1)
+                            val request = frame.getArgument(1) ?: return@hookBefore
                             val callingUserId = getUserFromCallingUid(getIntField(request, "callingUid"))
                             val caller = getObjectField(request, "callingPackage") as? String ?: return@hookBefore
                             val intent = getObjectField(request, "intent") as? Intent ?: return@hookBefore
@@ -148,7 +148,8 @@ class ActivityHook : IFrameworkHook {
                         ACTIVITY_STARTER_CLASS,
                         "execute",
                     ) { _, frame, returnValue ->
-                        val request = getObjectField(frame.thisObject, "mRequest") ?: return@hookBefore
+                        val thisObject = frame.thisObject ?: return@hookBefore
+                        val request = getObjectField(thisObject, "mRequest") ?: return@hookBefore
                         val callingUserId = getUserFromCallingUid(getIntField(request, "callingUid"))
                         val caller = getObjectField(request, "callingPackage") as? String ?: return@hookBefore
                         val intent = getObjectField(request, "intent") as? Intent ?: return@hookBefore
