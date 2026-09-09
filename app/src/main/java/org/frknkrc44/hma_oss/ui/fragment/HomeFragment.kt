@@ -47,9 +47,7 @@ import org.frknkrc44.hma_oss.databinding.FragmentHomeBinding
 import kotlin.concurrent.thread
 
 /**
- * A simple [Fragment] subclass.
- * Use the [HomeFragment.newInstance] factory method to
- * create an instance of this fragment.
+ * Home screen for module status and navigation.
  */
 class HomeFragment : Fragment(R.layout.fragment_home) {
     private val binding by viewBinding(FragmentHomeBinding::bind)
@@ -79,9 +77,6 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
                         if (elapsedRealtime() >= base) {
                             stop()
                             dialog.dismiss()
-
-                            // is it really final countdown?
-                            isTheFinalCountDown
                         }
                     }
                     isCountDown = true
@@ -454,10 +449,5 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
                 })
             }
         }
-    }
-
-    companion object {
-        @JvmStatic
-        fun newInstance() = HomeFragment()
     }
 }

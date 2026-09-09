@@ -105,9 +105,11 @@ class AppPresets private constructor() {
                 }.onFailure { fail ->
                     loggerFunction?.invoke(Log.ERROR) { fail.toString() }
                 }
-
-                loggerFunction?.invoke(Log.DEBUG) { preset.toString() }
             }
+        }
+
+        loggerFunction?.invoke(Log.DEBUG) {
+            "Presets reloaded from scratch for ${appsList.size} apps"
         }
 
         manifestDataCache.clear()
@@ -121,10 +123,6 @@ class AppPresets private constructor() {
         packageName: String,
         onModifyCache: (preset: String) -> Unit,
     ) {
-        if (presetList.any { it.value.containsPackage(packageName) }) {
-            return
-        }
-
         var appInfo: ApplicationInfo? = null
         var addedInAList = false
 

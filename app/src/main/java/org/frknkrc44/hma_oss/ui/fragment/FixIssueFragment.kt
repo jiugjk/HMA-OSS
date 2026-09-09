@@ -37,10 +37,4 @@ class FixIssueFragment : Fragment(R.layout.fragment_fix_issue) {
 
         setEdge2EdgeFlags(binding.root)
     }
-
-    @Suppress("unused")
-    companion object {
-        @JvmStatic
-        fun newInstance() = FixIssueFragment()
-    }
 }

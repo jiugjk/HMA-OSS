@@ -214,7 +214,6 @@ class AppDataIsolationHook : IFrameworkHook {
                         if (packageName in systemApps || packageName == BuildConfig.APP_PACKAGE_NAME) {
                             logD(TAG) { "@remountAppStorageDirs SYSTEM $pid - $packageName is marked to remove" }
                             keysToRemove += pid
-                            break
                         }
                     }
 

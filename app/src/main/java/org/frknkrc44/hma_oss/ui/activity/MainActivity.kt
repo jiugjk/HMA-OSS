@@ -108,5 +108,6 @@ class MainActivity : AppCompatActivity() {
         return context?.createConfigurationContext(config)
     }
 
-    private fun isNightModeEnabled(config: Configuration?) = config?.uiMode?.and(Configuration.UI_MODE_NIGHT_MASK)
+    private fun isNightModeEnabled(config: Configuration?) =
+        config?.uiMode?.and(Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 }

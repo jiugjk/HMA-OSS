@@ -36,7 +36,7 @@ class SettingsTemplateConfFragment : Fragment(R.layout.fragment_template_setting
 
     private fun onBack(delete: Boolean) {
         viewModel.name = viewModel.name?.trim()
-        if (viewModel.name != viewModel.originalName && (ConfigManager.hasTemplate(viewModel.name) || viewModel.name == null) || delete) {
+        if (viewModel.name != viewModel.originalName && (ConfigManager.hasSettingTemplate(viewModel.name) || viewModel.name == null) || delete) {
             val builder = MaterialAlertDialogBuilder(requireContext())
                 .setTitle(if (delete) R.string.template_delete_title else R.string.template_name_invalid)
                 .setMessage(if (delete) R.string.template_delete else R.string.template_name_already_exist)

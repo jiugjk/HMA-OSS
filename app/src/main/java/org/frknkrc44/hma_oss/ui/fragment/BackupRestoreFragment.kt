@@ -44,7 +44,7 @@ class BackupRestoreFragment : Fragment(R.layout.fragment_backup_restore) {
     private val trimConfig get() = binding.switchTrimConfig.isChecked
     private val overwriteApps get() = binding.switchOverwriteApps.isChecked
     private val overwriteTemplates get() = binding.switchOverwriteTemplates.isChecked
-    private val overwriteSettingsTemplates get() = binding.switchOverwriteTemplates.isChecked
+    private val overwriteSettingsTemplates get() = binding.switchOverwriteSettingsTemplates.isChecked
 
     private enum class BRCategory {
         APP,

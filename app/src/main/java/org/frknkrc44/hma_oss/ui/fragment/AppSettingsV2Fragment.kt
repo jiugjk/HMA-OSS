@@ -50,17 +50,9 @@ class AppSettingsV2Fragment : Fragment(R.layout.fragment_settings) {
         private const val TAG = "AppSettingsV2Fragment"
     }
 
-    private var argsOverride: AppSettingsV2FragmentArgs? = null
-
     private val binding by viewBinding(FragmentSettingsBinding::bind)
     private val viewModel by viewModels<AppSettingsViewModel> {
-        var args = if (argsOverride != null) {
-            argsOverride!!
-        } else {
-            val safeArgs by navArgs<AppSettingsV2FragmentArgs>()
-
-            safeArgs
-        }
+        val args by navArgs<AppSettingsV2FragmentArgs>()
 
         val cfg: JsonConfig.AppConfig? = if (args.mode != AppConstants.APP_CONFIG_MODE_SINGLE) {
             if (args.inputConfig != null) JsonConfig.AppConfig.parse(args.inputConfig)

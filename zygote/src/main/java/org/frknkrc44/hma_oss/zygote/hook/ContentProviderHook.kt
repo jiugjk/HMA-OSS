@@ -114,35 +114,39 @@ class ContentProviderHook : IFrameworkHook {
 
                     var filteredEntryCount = 0
 
-                    while (result.moveToNext()) {
-                        val name = result.getString(columns.keys.indexOf("name"))
+                    try {
+                        while (result.moveToNext()) {
+                            val name = result.getString(columns.keys.indexOf("name"))
 
-                        // skip when the entry is not a member of this database
-                        val dbName = getOverriddenDatabaseName(database, name)
-                        if (dbName != database) continue
+                            // skip when the entry is not a member of this database
+                            val dbName = getOverriddenDatabaseName(database, name)
+                            if (dbName != database) continue
 
-                        keyColumn.add(name)
+                            keyColumn.add(name)
 
-                        val replacement = service.getSpoofedSetting(caller, name, database)
-                        val value = if (replacement != null) {
-                            logD(TAG) { "@spoofSettings QUERY $name in $database replaced for $caller" }
+                            val replacement = service.getSpoofedSetting(caller, name, database)
+                            val value = if (replacement != null) {
+                                logD(TAG) { "@spoofSettings QUERY $name in $database replaced for $caller" }
 
-                            filteredEntryCount++
+                                filteredEntryCount++
 
-                            replacement.value
-                        } else {
-                            result.getString(columns.keys.indexOf("value"))
-                        }
+                                replacement.value
+                            } else {
+                                result.getString(columns.keys.indexOf("value"))
+                            }
 
-                        valueColumn.add(value)
+                            valueColumn.add(value)
 
-                        if (columns.size > 2) {
-                            for (otherCol in columns.keys.filter { it !in NV_PAIR }) {
-                                val other = result.getString(columns.keys.indexOf(otherCol))
+                            if (columns.size > 2) {
+                                for (otherCol in columns.keys.filter { it !in NV_PAIR }) {
+                                    val other = result.getString(columns.keys.indexOf(otherCol))
 
-                                columns[otherCol]!!.add(other)
+                                    columns[otherCol]!!.add(other)
+                                }
                             }
                         }
+                    } finally {
+                        result.close()
                     }
 
                     service.increaseSettingsFilterCount(caller, filteredEntryCount)

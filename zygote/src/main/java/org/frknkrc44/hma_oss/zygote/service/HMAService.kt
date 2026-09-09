@@ -11,7 +11,6 @@ import android.os.RemoteException
 import android.provider.Settings
 import android.util.Log
 import icu.nullptr.hidemyapplist.common.AppPresets
-import icu.nullptr.hidemyapplist.common.CollectionUtils.removeIf
 import icu.nullptr.hidemyapplist.common.Constants
 import icu.nullptr.hidemyapplist.common.Constants.PARCEL_TYPE_CONFIG
 import icu.nullptr.hidemyapplist.common.Constants.PARCEL_TYPE_LOG
@@ -356,7 +355,11 @@ class HMAService(val pms: IPackageManager, val pmn: Any?) : IHMAService.Stub() {
 
         val templates = getEnabledSettingsTemplates(caller)
         val replacement = config.settingsTemplates.firstNotNullOfOrNull { (key, value) ->
-            if (key in templates) value.settingsList.firstOrNull { it.name == name } else null
+            if (key in templates) {
+                value.settingsList.firstOrNull { it.name == name && it.database == database }
+            } else {
+                null
+            }
         }
         if (replacement != null) return replacement
 
@@ -496,45 +499,38 @@ class HMAService(val pms: IPackageManager, val pmn: Any?) : IHMAService.Stub() {
     fun writeConfig(json: String) {
         if (!ensureManagerWorkModeOK()) return
 
-        synchronized(configLock) {
+        val synced = synchronized(configLock) {
             runCatching {
                 val newConfig = JsonConfig.parse(json)
                 newConfig.cleanRemnantsFromConfig()
                 if (newConfig.configVersion != BuildConfig.CONFIG_VERSION) {
                     logW(TAG) { "Sync config: version mismatch, need reboot" }
-                    return
+                    return@runCatching false
                 }
                 config = newConfig
-                configFile.writeText(json)
+                configFile.writeText(newConfig.toString())
                 dataHolder.clearUidCache()
-
-                // remove filter counts for apps if they are not in config
-                dataHolder.filterHolder
-                    .filterCounts.removeIf { key, _ -> !config.scope.containsKey(key) }
-            }.onSuccess {
-                logD(TAG) { "Config synced" }
-            }.onFailure {
-                return@synchronized
-            }
+                true
+            }.getOrDefault(false)
         }
 
+        if (!synced) return
+
+        dataHolder.retainFilterCounts(config.scope.keys)
         writeFilterCount(true)
+        logD(TAG) { "Config synced" }
     }
 
     private fun writeFilterCount(force: Boolean = false) {
         if (!ensureManagerWorkModeOK()) return
 
-        synchronized(configLock) {
-            if (!force && dataHolder.filterHolder.totalCount % 100 != 0) {
-                return
-            }
+        val snapshot = dataHolder.snapshotFilterHolder(force) ?: return
 
+        synchronized(configLock) {
             runCatching {
-                filterCountFile.writeText(detailedFilterStats)
+                filterCountFile.writeText(snapshot)
             }.onSuccess {
                 logD(TAG) { "Filter count synced" }
-            }.onFailure {
-                return@onFailure
             }
         }
     }
@@ -687,12 +683,10 @@ class HMAService(val pms: IPackageManager, val pmn: Any?) : IHMAService.Stub() {
 
     override fun reloadPresetsFromScratch() = reloadPresets(true)
 
-    override fun getDetailedFilterStats() = dataHolder.filterHolder.toString()
+    override fun getDetailedFilterStats() = dataHolder.snapshotFilterHolder() ?: "{}"
 
     override fun clearFilterStats() {
-        synchronized(configLock) {
-            dataHolder.filterHolder.filterCounts.clear()
-        }
+        dataHolder.clearFilterCounts()
 
         writeFilterCount(true)
     }
@@ -730,16 +724,14 @@ class HMAService(val pms: IPackageManager, val pmn: Any?) : IHMAService.Stub() {
     }
 
     override fun writeFD(type: Int, fd: ParcelFileDescriptor) {
-        val receiveStream = FileInputStream(fd.fileDescriptor)
-
-        when (type) {
-            PARCEL_TYPE_CONFIG -> {
-                writeConfig(receiveStream.readBytes().decodeToString())
+        FileInputStream(fd.fileDescriptor).use { receiveStream ->
+            when (type) {
+                PARCEL_TYPE_CONFIG -> {
+                    writeConfig(receiveStream.readBytes().decodeToString())
+                }
+                else -> throw RemoteException("Invalid type for write: $type")
             }
-            else -> throw RemoteException("Invalid type for write: $type")
         }
-
-        receiveStream.close()
         fd.close()
     }
 
@@ -781,20 +773,24 @@ class HMAService(val pms: IPackageManager, val pmn: Any?) : IHMAService.Stub() {
 
         val bytes = dataFile.readBytes()
         configFile.writeBytes(bytes)
+        reloadConfigFromFile()
 
         return true
     }
 
     override fun reloadConfigFromFile() {
-        val loading = runCatching {
-            assert(configFile.exists())
-            val json = configFile.readText()
-            JsonConfig.parse(json)
-        }.getOrElse {
-            logE(TAG, it) { "Failed to parse config.json" }
-            return
-        }
+        synchronized(configLock) {
+            val loading = runCatching {
+                assert(configFile.exists())
+                val json = configFile.readText()
+                JsonConfig.parse(json)
+            }.getOrElse {
+                logE(TAG, it) { "Failed to parse config.json" }
+                return
+            }
 
-        config = loading
+            config = loading
+            dataHolder.clearUidCache()
+        }
     }
 }

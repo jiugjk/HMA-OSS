@@ -15,48 +15,28 @@ import icu.nullptr.hidemyapplist.service.PrefManager
 import org.frknkrc44.hma_oss.R
 
 object ThemeUtils {
-    private val colorThemeMap = mapOf(
-        "SAKURA" to R.style.ThemeOverlay_Light_MaterialSakura,
-        "MATERIAL_RED" to R.style.ThemeOverlay_Light_MaterialRed,
-        "MATERIAL_PINK" to R.style.ThemeOverlay_Light_MaterialPink,
-        "MATERIAL_PURPLE" to R.style.ThemeOverlay_Light_MaterialPurple,
-        "MATERIAL_DEEP_PURPLE" to R.style.ThemeOverlay_Light_MaterialDeepPurple,
-        "MATERIAL_INDIGO" to R.style.ThemeOverlay_Light_MaterialIndigo,
-        "MATERIAL_BLUE" to R.style.ThemeOverlay_Light_MaterialBlue,
-        "MATERIAL_LIGHT_BLUE" to R.style.ThemeOverlay_Light_MaterialLightBlue,
-        "MATERIAL_CYAN" to R.style.ThemeOverlay_Light_MaterialCyan,
-        "MATERIAL_TEAL" to R.style.ThemeOverlay_Light_MaterialTeal,
-        "MATERIAL_GREEN" to R.style.ThemeOverlay_Light_MaterialGreen,
-        "MATERIAL_LIGHT_GREEN" to R.style.ThemeOverlay_Light_MaterialLightGreen,
-        "MATERIAL_LIME" to R.style.ThemeOverlay_Light_MaterialLime,
-        "MATERIAL_YELLOW" to R.style.ThemeOverlay_Light_MaterialYellow,
-        "MATERIAL_AMBER" to R.style.ThemeOverlay_Light_MaterialAmber,
-        "MATERIAL_ORANGE" to R.style.ThemeOverlay_Light_MaterialOrange,
-        "MATERIAL_DEEP_ORANGE" to R.style.ThemeOverlay_Light_MaterialDeepOrange,
-        "MATERIAL_BROWN" to R.style.ThemeOverlay_Light_MaterialBrown,
-        "MATERIAL_BLUE_GREY" to R.style.ThemeOverlay_Light_MaterialBlueGrey
-    )
+    private data class ColorTheme(@StyleRes val light: Int, @StyleRes val dark: Int)
 
-    private val darkColorThemeMap = mapOf(
-        "SAKURA" to R.style.ThemeOverlay_Dark_MaterialSakura,
-        "MATERIAL_RED" to R.style.ThemeOverlay_Dark_MaterialRed,
-        "MATERIAL_PINK" to R.style.ThemeOverlay_Dark_MaterialPink,
-        "MATERIAL_PURPLE" to R.style.ThemeOverlay_Dark_MaterialPurple,
-        "MATERIAL_DEEP_PURPLE" to R.style.ThemeOverlay_Dark_MaterialDeepPurple,
-        "MATERIAL_INDIGO" to R.style.ThemeOverlay_Dark_MaterialIndigo,
-        "MATERIAL_BLUE" to R.style.ThemeOverlay_Dark_MaterialBlue,
-        "MATERIAL_LIGHT_BLUE" to R.style.ThemeOverlay_Dark_MaterialLightBlue,
-        "MATERIAL_CYAN" to R.style.ThemeOverlay_Dark_MaterialCyan,
-        "MATERIAL_TEAL" to R.style.ThemeOverlay_Dark_MaterialTeal,
-        "MATERIAL_GREEN" to R.style.ThemeOverlay_Dark_MaterialGreen,
-        "MATERIAL_LIGHT_GREEN" to R.style.ThemeOverlay_Dark_MaterialLightGreen,
-        "MATERIAL_LIME" to R.style.ThemeOverlay_Dark_MaterialLime,
-        "MATERIAL_YELLOW" to R.style.ThemeOverlay_Dark_MaterialYellow,
-        "MATERIAL_AMBER" to R.style.ThemeOverlay_Dark_MaterialAmber,
-        "MATERIAL_ORANGE" to R.style.ThemeOverlay_Dark_MaterialOrange,
-        "MATERIAL_DEEP_ORANGE" to R.style.ThemeOverlay_Dark_MaterialDeepOrange,
-        "MATERIAL_BROWN" to R.style.ThemeOverlay_Dark_MaterialBrown,
-        "MATERIAL_BLUE_GREY" to R.style.ThemeOverlay_Dark_MaterialBlueGrey
+    private val colorThemes = mapOf(
+        "SAKURA" to ColorTheme(R.style.ThemeOverlay_Light_MaterialSakura, R.style.ThemeOverlay_Dark_MaterialSakura),
+        "MATERIAL_RED" to ColorTheme(R.style.ThemeOverlay_Light_MaterialRed, R.style.ThemeOverlay_Dark_MaterialRed),
+        "MATERIAL_PINK" to ColorTheme(R.style.ThemeOverlay_Light_MaterialPink, R.style.ThemeOverlay_Dark_MaterialPink),
+        "MATERIAL_PURPLE" to ColorTheme(R.style.ThemeOverlay_Light_MaterialPurple, R.style.ThemeOverlay_Dark_MaterialPurple),
+        "MATERIAL_DEEP_PURPLE" to ColorTheme(R.style.ThemeOverlay_Light_MaterialDeepPurple, R.style.ThemeOverlay_Dark_MaterialDeepPurple),
+        "MATERIAL_INDIGO" to ColorTheme(R.style.ThemeOverlay_Light_MaterialIndigo, R.style.ThemeOverlay_Dark_MaterialIndigo),
+        "MATERIAL_BLUE" to ColorTheme(R.style.ThemeOverlay_Light_MaterialBlue, R.style.ThemeOverlay_Dark_MaterialBlue),
+        "MATERIAL_LIGHT_BLUE" to ColorTheme(R.style.ThemeOverlay_Light_MaterialLightBlue, R.style.ThemeOverlay_Dark_MaterialLightBlue),
+        "MATERIAL_CYAN" to ColorTheme(R.style.ThemeOverlay_Light_MaterialCyan, R.style.ThemeOverlay_Dark_MaterialCyan),
+        "MATERIAL_TEAL" to ColorTheme(R.style.ThemeOverlay_Light_MaterialTeal, R.style.ThemeOverlay_Dark_MaterialTeal),
+        "MATERIAL_GREEN" to ColorTheme(R.style.ThemeOverlay_Light_MaterialGreen, R.style.ThemeOverlay_Dark_MaterialGreen),
+        "MATERIAL_LIGHT_GREEN" to ColorTheme(R.style.ThemeOverlay_Light_MaterialLightGreen, R.style.ThemeOverlay_Dark_MaterialLightGreen),
+        "MATERIAL_LIME" to ColorTheme(R.style.ThemeOverlay_Light_MaterialLime, R.style.ThemeOverlay_Dark_MaterialLime),
+        "MATERIAL_YELLOW" to ColorTheme(R.style.ThemeOverlay_Light_MaterialYellow, R.style.ThemeOverlay_Dark_MaterialYellow),
+        "MATERIAL_AMBER" to ColorTheme(R.style.ThemeOverlay_Light_MaterialAmber, R.style.ThemeOverlay_Dark_MaterialAmber),
+        "MATERIAL_ORANGE" to ColorTheme(R.style.ThemeOverlay_Light_MaterialOrange, R.style.ThemeOverlay_Dark_MaterialOrange),
+        "MATERIAL_DEEP_ORANGE" to ColorTheme(R.style.ThemeOverlay_Light_MaterialDeepOrange, R.style.ThemeOverlay_Dark_MaterialDeepOrange),
+        "MATERIAL_BROWN" to ColorTheme(R.style.ThemeOverlay_Light_MaterialBrown, R.style.ThemeOverlay_Dark_MaterialBrown),
+        "MATERIAL_BLUE_GREY" to ColorTheme(R.style.ThemeOverlay_Light_MaterialBlueGrey, R.style.ThemeOverlay_Dark_MaterialBlueGrey),
     )
 
     val isSystemAccent get() = DynamicColors.isDynamicColorAvailable() && PrefManager.followSystemAccent
@@ -77,10 +57,11 @@ object ThemeUtils {
 
     @StyleRes
     fun getColorThemeStyleRes(context: Context): Int {
+        val theme = colorThemes[colorTheme]
         return if (isNightMode(context)) {
-            darkColorThemeMap[colorTheme] ?: R.style.ThemeOverlay_Dark_MaterialBlue
+            theme?.dark ?: R.style.ThemeOverlay_Dark_MaterialBlue
         } else {
-            colorThemeMap[colorTheme] ?: R.style.ThemeOverlay_Light_MaterialBlue
+            theme?.light ?: R.style.ThemeOverlay_Light_MaterialBlue
         }
     }
 

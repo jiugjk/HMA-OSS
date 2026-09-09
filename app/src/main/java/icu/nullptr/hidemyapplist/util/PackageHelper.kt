@@ -16,13 +16,10 @@ import icu.nullptr.hidemyapplist.service.PrefManager
 import icu.nullptr.hidemyapplist.service.ServiceClient
 import icu.nullptr.hidemyapplist.ui.util.ThemeUtils.asDrawable
 import icu.nullptr.hidemyapplist.ui.util.asComponentName
-import icu.nullptr.hidemyapplist.ui.util.get
 import icu.nullptr.hidemyapplist.util.ConfigUtils.Companion.getLocale
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.frknkrc44.hma_oss.BuildConfig
 import org.frknkrc44.hma_oss.R
@@ -75,12 +72,12 @@ object PackageHelper {
         }
     }
 
-    private val packageCache = MutableSharedFlow<Map<String, PackageCache>>(replay = 1)
-    val appList = MutableSharedFlow<List<String>>(replay = 1)
+    private val packageCache = MutableStateFlow<Map<String, PackageCache>>(emptyMap())
+    val appList = MutableStateFlow<List<String>>(emptyList())
 
-    val isRefreshing = MutableSharedFlow<Boolean>(replay = 1)
+    val isRefreshing = MutableStateFlow(false)
 
-    val refreshing get() = isRefreshing.replayCache.isEmpty() || isRefreshing.get()
+    val refreshing get() = isRefreshing.value
 
     init {
         invalidateCache()
@@ -90,7 +87,7 @@ object PackageHelper {
         onFinished: ((Throwable?) -> Unit)? = null
     ) {
         hmaApp.globalScope.launch {
-            isRefreshing.emit(true)
+            isRefreshing.value = true
             val cache = withContext(Dispatchers.IO) {
                 val pm = hmaApp.packageManager
                 val um = hmaApp.getSystemService(Context.USER_SERVICE) as UserManager
@@ -98,11 +95,12 @@ object PackageHelper {
 
                 mutableMapOf<String, PackageCache>().also { cacheMap ->
                     for (userProfile: UserHandle in profiles) {
-                        val packages = ServiceClient.getPackageNames(userProfile.hashCode()) ?: arrayOf<String>()
+                        val userId = userProfile.getIdentifier()
+                        val packages = ServiceClient.getPackageNames(userId) ?: arrayOf<String>()
                         for (packageName in packages) {
                             if (packageName in Constants.packagesShouldNotHide) continue
                             val packageInfo = try {
-                                ServiceClient.getPackageInfo(packageName, userProfile.hashCode())!!
+                                ServiceClient.getPackageInfo(packageName, userId)!!
                             } catch (e: Throwable) {
                                 ServiceClient.log(Log.DEBUG, TAG,
                                     "Cannot get package details for $packageName\n${e.stackTraceToString()}")
@@ -113,13 +111,13 @@ object PackageHelper {
                                 val label = pm.getApplicationLabel(appInfo).toString()
                                 val icon = loadAppIconFromAppInfo(appInfo)
                                 if (cacheMap.containsKey(packageName)) {
-                                    cacheMap[packageName]?.userIds?.add(userProfile.hashCode())
+                                    cacheMap[packageName]?.userIds?.add(userId)
                                 } else {
                                     cacheMap[packageName] = PackageCache(
                                         packageInfo,
                                         label,
                                         icon,
-                                        HashSet<Int>().apply { add(userProfile.hashCode()) }
+                                        HashSet<Int>().apply { add(userId) }
                                     )
                                 }
                             }
@@ -127,9 +125,9 @@ object PackageHelper {
                     }
                 }
             }
-            packageCache.emit(cache)
-            appList.emit(cache.keys.toList())
-            isRefreshing.emit(false)
+            packageCache.value = cache
+            appList.value = cache.keys.toList()
+            isRefreshing.value = false
         }.apply {
             if (onFinished != null) {
                 invokeOnCompletion(onFinished)
@@ -145,39 +143,27 @@ object PackageHelper {
             PrefManager.SortMethod.BY_UPDATE_TIME -> Comparators.byUpdateTime
         }
         if (PrefManager.appFilter_reverseOrder) comparator = comparator.reversed()
-        val list = appList.first().sortedWith(firstComparator.then(comparator))
-        appList.emit(list)
+        val list = appList.value.sortedWith(firstComparator.then(comparator))
+        appList.value = list
     }
 
-    private suspend fun getCacheNoThrow() = try {
-        packageCache.first()
-    } catch (_: Throwable) {
-        mapOf()
-    }
+    fun exists(packageName: String) = packageCache.value.contains(packageName)
 
-    fun exists(packageName: String) = runBlocking {
-        getCacheNoThrow().contains(packageName)
-    }
+    fun loadPackageInfo(packageName: String): PackageInfo =
+        packageCache.value[packageName]!!.info
 
-    fun loadPackageInfo(packageName: String): PackageInfo = runBlocking {
-        getCacheNoThrow()[packageName]!!.info
-    }
+    fun loadAppLabel(packageName: String): String =
+        packageCache.value[packageName]?.label ?: packageName
 
-    fun loadAppLabel(packageName: String): String = runBlocking {
-        getCacheNoThrow()[packageName]?.label ?: packageName
-    }
+    fun loadAppIcon(packageName: String): Drawable =
+        packageCache.value[packageName]?.icon ?: android.R.drawable.sym_def_app_icon.asDrawable(hmaApp)
 
-    fun loadAppIcon(packageName: String): Drawable = runBlocking {
-        getCacheNoThrow()[packageName]?.icon ?:
-            android.R.drawable.sym_def_app_icon.asDrawable(hmaApp)
-    }
+    fun loadUserIds(packageName: String): Set<Int> =
+        packageCache.value[packageName]?.userIds ?: setOf()
 
-    fun loadUserIds(packageName: String): Set<Int> = runBlocking {
-        getCacheNoThrow()[packageName]?.userIds ?: setOf()
-    }
-
-    fun isSystem(packageName: String): Boolean = runBlocking {
-        getCacheNoThrow()[packageName]?.info?.applicationInfo?.flags?.and(ApplicationInfo.FLAG_SYSTEM) != 0
+    fun isSystem(packageName: String): Boolean {
+        val flags = packageCache.value[packageName]?.info?.applicationInfo?.flags ?: return false
+        return flags and ApplicationInfo.FLAG_SYSTEM != 0
     }
 
     fun loadAppIconFromAppInfo(appInfo: ApplicationInfo): Drawable {

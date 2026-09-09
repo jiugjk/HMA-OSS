@@ -42,7 +42,8 @@ class BulkHooker {
     private fun addHook(clazz: String, methodName: String, argumentCount: Int, impl: HookTransformer) {
         val isConstructorHook = methodName == CONSTRUCTOR_METHOD_NAME
         if (isConstructorHook && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            logI(ZygoteEntry.TAG) { "Constructor hook removed for Android 12-: $clazz -> $methodName($argumentCount)" }
+            logI(ZygoteEntry.TAG) { "Constructor hook skipped for Android 12-: $clazz -> $methodName($argumentCount)" }
+            return
         }
 
         val inDisabledHooks = service?.config?.disabledHooks?.any {
