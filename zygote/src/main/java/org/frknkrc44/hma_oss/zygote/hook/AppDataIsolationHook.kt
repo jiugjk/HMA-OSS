@@ -62,16 +62,18 @@ class AppDataIsolationHook : IFrameworkHook {
                     Class.forName(PROCESS_LIST_CLASS, true, SystemServerHook.classLoader)
                 }.getOrNull()
 
+                val thisObject = frame.thisObject ?: return@hookBefore
+
                 if (config.altAppDataIsolation) {
                     val isEnabled = getBooleanField(
-                        frame.thisObject,
+                        thisObject,
                         APPDATA_ISOLATION_ENABLED,
                         processListClazz,
                     )
 
                     if (!isEnabled) {
                         setBooleanField(
-                            frame.thisObject,
+                            thisObject,
                             APPDATA_ISOLATION_ENABLED,
                             true,
                             processListClazz,
@@ -89,14 +91,14 @@ class AppDataIsolationHook : IFrameworkHook {
                         logE(TAG) { "ProcessList - FUSE storage is not enabled, skip vold hook" }
                     } else {
                         val isolationEnabled = getBooleanField(
-                            frame.thisObject,
+                            thisObject,
                             VOLD_APPDATA_ISOLATION_ENABLED,
                             processListClazz,
                         )
 
                         if (!isolationEnabled) {
                             setBooleanField(
-                                frame.thisObject,
+                                thisObject,
                                 VOLD_APPDATA_ISOLATION_ENABLED,
                                 true,
                                 processListClazz,
@@ -181,14 +183,16 @@ class AppDataIsolationHook : IFrameworkHook {
                         return@hookBefore
                     }
 
+                    val thisObject = frame.thisObject ?: return@hookBefore
+
                     val isolationEnabled = getBooleanField(
-                        frame.thisObject,
+                        thisObject,
                         VOLD_APPDATA_ISOLATION_ENABLED,
                     )
 
                     if (!isolationEnabled) {
                         setBooleanField(
-                            frame.thisObject,
+                            thisObject,
                             VOLD_APPDATA_ISOLATION_ENABLED,
                             true,
                         )
