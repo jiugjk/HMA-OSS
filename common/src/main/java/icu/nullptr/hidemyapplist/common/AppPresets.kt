@@ -121,6 +121,7 @@ class AppPresets private constructor() {
     fun handlePackageAdded(
         pms: IPackageManager,
         packageName: String,
+        userId: Int = 0,
         onModifyCache: (preset: String) -> Unit,
     ) {
         var appInfo: ApplicationInfo? = null
@@ -129,7 +130,7 @@ class AppPresets private constructor() {
         presetList.forEach {
             if (!it.value.containsPackage(packageName)) {
                 if (appInfo == null)
-                    appInfo = pms.getPackageInfoCompat(packageName, 0, 0)?.applicationInfo
+                    appInfo = pms.getPackageInfoCompat(packageName, 0, userId)?.applicationInfo
 
                 if (appInfo != null) {
                     runCatching {
@@ -146,7 +147,7 @@ class AppPresets private constructor() {
         }
 
         if (appInfo == null)
-            appInfo = pms.getPackageInfoCompat(packageName, 0, 0)?.applicationInfo
+            appInfo = pms.getPackageInfoCompat(packageName, 0, userId)?.applicationInfo
 
         if (appInfo != null)
             addedInAList = RiskyPackageUtils.instance.tryToAddIntoGMSConnectionList(appInfo) {

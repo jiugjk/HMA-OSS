@@ -73,6 +73,7 @@ object PackageHelper {
     }
 
     private val packageCache = MutableStateFlow<Map<String, PackageCache>>(emptyMap())
+    private val installedPackages = MutableStateFlow<Set<String>>(emptySet())
     val appList = MutableStateFlow<List<String>>(emptyList())
 
     val isRefreshing = MutableStateFlow(false)
@@ -94,46 +95,59 @@ object PackageHelper {
     ) {
         hmaApp.globalScope.launch {
             isRefreshing.value = true
-            val cache = withContext(Dispatchers.IO) {
-                val pm = hmaApp.packageManager
-                val um = hmaApp.getSystemService(Context.USER_SERVICE) as UserManager
-                val profiles = um.userProfiles
+            try {
+                val cache = withContext(Dispatchers.IO) {
+                    val pm = hmaApp.packageManager
+                    val um = hmaApp.getSystemService(Context.USER_SERVICE) as UserManager
+                    val profiles = um.userProfiles
+                    val installed = mutableSetOf<String>()
+                    var enumerated = false
 
-                mutableMapOf<String, PackageCache>().also { cacheMap ->
-                    for (userProfile: UserHandle in profiles) {
-                        val userId = userIdOf(userProfile)
-                        val packages = ServiceClient.getPackageNames(userId) ?: arrayOf<String>()
-                        for (packageName in packages) {
-                            if (packageName in Constants.packagesShouldNotHide) continue
-                            val packageInfo = try {
-                                ServiceClient.getPackageInfo(packageName, userId)!!
-                            } catch (e: Throwable) {
-                                ServiceClient.log(Log.DEBUG, TAG,
-                                    "Cannot get package details for $packageName\n${e.stackTraceToString()}")
-
-                                continue
-                            }
-                            packageInfo.applicationInfo?.let { appInfo ->
-                                val label = pm.getApplicationLabel(appInfo).toString()
-                                val icon = loadAppIconFromAppInfo(appInfo)
-                                if (cacheMap.containsKey(packageName)) {
-                                    cacheMap[packageName]?.userIds?.add(userId)
-                                } else {
-                                    cacheMap[packageName] = PackageCache(
-                                        packageInfo,
-                                        label,
-                                        icon,
-                                        HashSet<Int>().apply { add(userId) }
-                                    )
+                    mutableMapOf<String, PackageCache>().also { cacheMap ->
+                        for (userProfile: UserHandle in profiles) {
+                            val userId = userIdOf(userProfile)
+                            val packages = ServiceClient.getPackageNames(userId) ?: continue
+                            enumerated = true
+                            installed.addAll(packages)
+                            for (packageName in packages) {
+                                if (packageName in Constants.packagesShouldNotHide) continue
+                                val packageInfo = try {
+                                    ServiceClient.getPackageInfo(packageName, userId)!!
+                                } catch (e: Throwable) {
+                                    ServiceClient.log(Log.DEBUG, TAG,
+                                        "Cannot get package details for $packageName\n${e.stackTraceToString()}")
+                                    continue
+                                }
+                                packageInfo.applicationInfo?.let { appInfo ->
+                                    val label = pm.getApplicationLabel(appInfo).toString()
+                                    val icon = loadAppIconFromAppInfo(appInfo)
+                                    if (cacheMap.containsKey(packageName)) {
+                                        cacheMap[packageName]?.userIds?.add(userId)
+                                    } else {
+                                        cacheMap[packageName] = PackageCache(
+                                            packageInfo,
+                                            label,
+                                            icon,
+                                            HashSet<Int>().apply { add(userId) }
+                                        )
+                                    }
                                 }
                             }
                         }
+                        if (!enumerated) {
+                            error("Unable to enumerate installed packages")
+                        }
+                        installedPackages.value = installed
                     }
                 }
+                packageCache.value = cache
+                appList.value = cache.keys.toList()
+            } catch (t: Throwable) {
+                ServiceClient.log(Log.ERROR, TAG, t.stackTraceToString())
+                throw t
+            } finally {
+                isRefreshing.value = false
             }
-            packageCache.value = cache
-            appList.value = cache.keys.toList()
-            isRefreshing.value = false
         }.apply {
             if (onFinished != null) {
                 invokeOnCompletion(onFinished)
@@ -153,7 +167,7 @@ object PackageHelper {
         appList.value = list
     }
 
-    fun exists(packageName: String) = packageCache.value.contains(packageName)
+    fun exists(packageName: String) = installedPackages.value.contains(packageName)
 
     fun loadPackageInfo(packageName: String): PackageInfo =
         packageCache.value[packageName]!!.info

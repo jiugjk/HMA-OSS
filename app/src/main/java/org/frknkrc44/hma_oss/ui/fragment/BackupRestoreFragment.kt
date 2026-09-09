@@ -284,7 +284,7 @@ class BackupRestoreFragment : Fragment(R.layout.fragment_backup_restore) {
     }
 
     private fun onRestore() = clearNotImportedItems {
-        if (!overwriteApps || !overwriteTemplates) {
+        if (!overwriteApps || !overwriteTemplates || !overwriteSettingsTemplates) {
             val config = ConfigManager.getRawConfig(false)
 
             if (!overwriteApps) {

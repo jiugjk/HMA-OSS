@@ -51,21 +51,11 @@ class ContentProviderHook : IFrameworkHook {
                 }
 
                 var database = segments[0]
+                val nameFromPath = segments.getOrNull(1)
+                val nameFromQuery = if (nameFromPath == null) extractSettingsNameArg(args) else null
+                val name = nameFromPath ?: nameFromQuery
 
-                if (segments.size >= 2 || args != null) {
-                    val name = if (segments.size >= 2) {
-                        segments[1]
-                    } else {
-                        val querySel = args!!.getString(ContentResolver.QUERY_ARG_SQL_SELECTION)
-                        val query = querySel?.split(" ")
-                            ?.map { it.substringBeforeLast("=").trim() }
-
-                        logD(TAG) { "@spoofSettings QUERY caller: $caller, querySel: $querySel, query: $query" }
-
-                        val idx = query?.indexOfFirst { it == "name" } ?: return@hookAfter
-
-                        args.getStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS)!![idx]
-                    }
+                if (name != null) {
 
                     logD(TAG) { "@spoofSettings QUERY received caller: $caller, database: $database, name: $name, args: $args" }
 
@@ -74,20 +64,20 @@ class ContentProviderHook : IFrameworkHook {
                     val replacement = service.getSpoofedSetting(caller, name, database)
                     if (replacement != null) {
                         val columnNames = projection ?: arrayOf("name", "value")
-                        val nameInColumns = "name" in columnNames
-                        val valueInColumns = "value" in columnNames
-
-                        val returnedArray = when {
-                            nameInColumns && valueInColumns -> arrayOf(replacement.name, replacement.value)
-                            valueInColumns -> arrayOf(replacement.value)
-                            nameInColumns -> arrayOf(replacement.name)
-                            else -> return@hookAfter
-                        }
+                        val original = returnValue.result as? Cursor
+                        val returnedArray = columnNames.map { column ->
+                            when (column) {
+                                "name" -> replacement.name
+                                "value" -> replacement.value
+                                else -> null
+                            }
+                        }.toTypedArray()
 
                         logD(TAG) { "@spoofSettings QUERY $name in $database replaced for $caller" }
                         returnValue.result = MatrixCursor(columnNames, 1).apply {
                             addRow(returnedArray)
                         }
+                        original?.close()
 
                         service.increaseSettingsFilterCount(caller)
                     }
@@ -197,6 +187,15 @@ class ContentProviderHook : IFrameworkHook {
                 }
             }
         }
+    }
+
+    private fun extractSettingsNameArg(args: Bundle?): String? {
+        if (args == null) return null
+        val selection = args.getString(ContentResolver.QUERY_ARG_SQL_SELECTION) ?: return null
+        val selectionArgs = args.getStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS) ?: return null
+        val compact = selection.replace("\\s+".toRegex(), "").lowercase()
+        if (!compact.startsWith("name=?") || selectionArgs.isEmpty()) return null
+        return selectionArgs[0]
     }
 
     private fun getCallingPackages(frame: EmulatedStackFrame): Array<String> = try {

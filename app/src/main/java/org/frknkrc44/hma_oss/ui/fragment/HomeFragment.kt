@@ -416,28 +416,26 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
             return
         }
 
-        fetchLatestUpdate { updateInfo ->
-            if (updateInfo.versionName != BuildConfig.VERSION_NAME) {
-                withContext(Dispatchers.Main) {
-                    MaterialAlertDialogBuilder(requireContext())
-                        .setCancelable(false)
-                        .setTitle(getString(R.string.home_new_update, updateInfo.versionName))
-                        .setMessage(updateInfo.content)
-                        .setPositiveButton("GitHub") { _, _ ->
-                            startActivity(
-                                Intent(
-                                    Intent.ACTION_VIEW,
-                                    updateInfo.downloadUrl.toUri()
-                                )
-                            )
-                        }
-                        .setNegativeButton(android.R.string.cancel, null)
-                        .setOnDismissListener {
-                            hmaApp.updateDialogSkipped = true
-                        }
-                        .show()
+        viewLifecycleOwner.lifecycleScope.launch {
+            val updateInfo = withContext(Dispatchers.IO) { fetchLatestUpdate() } ?: return@launch
+            if (!isAdded || updateInfo.versionName == BuildConfig.VERSION_NAME) return@launch
+            MaterialAlertDialogBuilder(requireContext())
+                .setCancelable(false)
+                .setTitle(getString(R.string.home_new_update, updateInfo.versionName))
+                .setMessage(updateInfo.content)
+                .setPositiveButton("GitHub") { _, _ ->
+                    startActivity(
+                        Intent(
+                            Intent.ACTION_VIEW,
+                            updateInfo.downloadUrl.toUri()
+                        )
+                    )
                 }
-            }
+                .setNegativeButton(android.R.string.cancel, null)
+                .setOnDismissListener {
+                    hmaApp.updateDialogSkipped = true
+                }
+                .show()
         }
     }
 

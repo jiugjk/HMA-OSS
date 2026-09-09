@@ -183,6 +183,7 @@ object ConfigManager {
 
     fun renameTemplate(oldName: String, newName: String) {
         if (oldName == newName) return
+        if (config.templates.containsKey(newName)) return
         val template = config.templates[oldName] ?: return
         config.scope.forEach { (_, appInfo) ->
             if (appInfo.applyTemplates.contains(oldName)) {
@@ -234,6 +235,7 @@ object ConfigManager {
 
     fun renameSettingTemplate(oldName: String, newName: String) {
         if (oldName == newName) return
+        if (config.settingsTemplates.containsKey(newName)) return
         val template = config.settingsTemplates[oldName] ?: return
         config.scope.forEach { (_, appInfo) ->
             if (appInfo.applySettingTemplates.contains(oldName)) {

@@ -233,7 +233,7 @@ class AppSettingsV2Fragment : Fragment(R.layout.fragment_settings) {
                                 R.array.app_action_texts,
                             ) { _, which ->
                                 parent.saveConfig()
-                                val userIds = PackageHelper.loadUserIds(pack.app)
+                                val userIds = PackageHelper.loadUserIds(pack.app).sorted()
                                 val forceStop = which == 0
 
                                 if (userIds.size == 1) {
@@ -242,8 +242,8 @@ class AppSettingsV2Fragment : Fragment(R.layout.fragment_settings) {
                                     MaterialAlertDialogBuilder(pref.context).apply {
                                         setItems(
                                             userIds.map { id -> id.toString() }.toTypedArray(),
-                                        ) { _, userId ->
-                                            startMainActivity(userId, forceStop)
+                                        ) { _, index ->
+                                            startMainActivity(userIds[index], forceStop)
                                         }
                                     }.show()
                                 }

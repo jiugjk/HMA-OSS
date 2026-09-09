@@ -27,7 +27,7 @@ class LogAdapter(context: Context) : RecyclerView.Adapter<LogAdapter.ViewHolder>
 
         fun parseLog(text: String): LogItem? {
             val matcher = pattern.matcher(text)
-            matcher.find()
+            if (!matcher.find()) return null
             val level = matcher.group(1) ?: return null
             if (level in debugLevels && PrefManager.logFilter_level > 0 ||
                 level == "INFO" && PrefManager.logFilter_level > 1 ||
@@ -62,7 +62,7 @@ class LogAdapter(context: Context) : RecyclerView.Adapter<LogAdapter.ViewHolder>
                 "INFO" -> colorInfo
                 "WARN" -> colorWarn
                 "ERROR" -> colorError
-                else -> throw IllegalArgumentException("Unknown level: ${logItem.level}")
+                else -> colorInfo
             }
 
             binding.level.setBackgroundColor(color)

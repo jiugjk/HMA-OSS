@@ -26,9 +26,11 @@ object Utils {
 
     fun <T> binderLocalScope(block: () -> T): T {
         val identity = Binder.clearCallingIdentity()
-        val result = block()
-        Binder.restoreCallingIdentity(identity)
-        return result
+        return try {
+            block()
+        } finally {
+            Binder.restoreCallingIdentity(identity)
+        }
     }
 
     fun IPackageManager.getInstalledApplicationsCompat(flags: Long, userId: Int): List<ApplicationInfo> {

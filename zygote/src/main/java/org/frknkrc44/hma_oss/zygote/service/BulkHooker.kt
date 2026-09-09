@@ -209,16 +209,20 @@ class BulkHooker {
                 element.memoryAddresses?.second!!
             )
 
-            val thisObject = frame.getArgument(0)
-            val args = frame.dumpArgs(true)
+            try {
+                val thisObject = frame.getArgument(0)
+                val args = frame.dumpArgs(true)
 
-            // TODO: DO NOT USE ... as Constructor<*>, IT BREAKS TANGO!!!
-            value.result = (element.method as Method).invoke(thisObject, *args)
-
-            ArtMethodUtils.setExecutableEntryPoint(
-                element.method!!,
-                element.memoryAddresses?.first!!
-            )
+                // TODO: DO NOT USE ... as Constructor<*>, IT BREAKS TANGO!!!
+                value.result = (element.method as Method).invoke(thisObject, *args)
+            } catch (it: java.lang.reflect.InvocationTargetException) {
+                value.throwable = it.targetException ?: it
+            } finally {
+                ArtMethodUtils.setExecutableEntryPoint(
+                    element.method!!,
+                    element.memoryAddresses?.first!!
+                )
+            }
         } else {
             Transformers.invokeExactNoChecks(original, frame)
         }

@@ -69,7 +69,7 @@ object ZLUtils {
      * - `index == 0: thisObject`
      * - `index >= 1: function args`
      */
-    fun EmulatedStackFrame.getArgument(index: Int): Any {
+    fun EmulatedStackFrame.getArgument(index: Int): Any? {
         val accessor = accessor()
 
         return when (accessor.getArgumentShorty(index)) {
@@ -86,7 +86,7 @@ object ZLUtils {
         }
     }
 
-    fun EmulatedStackFrame.setArgument(index: Int, value: Any) {
+    fun EmulatedStackFrame.setArgument(index: Int, value: Any?) {
         val accessor = accessor()
 
         when (accessor.getArgumentShorty(index)) {
@@ -173,9 +173,12 @@ object ZLUtils {
 
     fun findField(clazz: Class<*>, name: String): Field? {
         var currentClazz: Class<*>? = clazz
-        while (currentClazz != null && currentClazz != Any::class.java) {
-            runCatching { currentClazz!!.getDeclaredField(name) }.getOrNull()?.let { return it }
-            currentClazz = currentClazz.superclass
+        while (currentClazz != null) {
+            try {
+                return currentClazz.getDeclaredField(name).apply { isAccessible = true }
+            } catch (_: NoSuchFieldException) {
+                currentClazz = currentClazz.superclass
+            }
         }
         return null
     }

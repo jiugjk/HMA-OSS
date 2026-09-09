@@ -83,6 +83,8 @@ class LogsFragment(
                                 if (log != null) add(log)
                             }
                             cur.clear()
+                        } else if (cur.isNotEmpty()) {
+                            cur.append('\n')
                         }
                         cur.append(line)
                     }
